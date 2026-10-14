@@ -1138,3 +1138,39 @@ body.kej-aktif { overflow: hidden; }
 .tnode.ultah { overflow: visible; }
 .tnode.ultah .ultah-lencana { left: -8px; top: -10px; }
 @media (prefers-reduced-motion: reduce) { .topi-mini { animation: none; } }
+
+/* ===== Halaman pohon: toolbar rapi & layar pas (HP) ===== */
+.tree-judul { display: flex; align-items: center; gap: .8rem; min-width: 0; flex: 1 1 320px; }
+.tree-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.tb-alat { display: flex; flex-wrap: wrap; gap: .5rem; }
+.tree-viewport { touch-action: pan-x pan-y; overscroll-behavior: contain; }
+@media (max-width: 767px) {
+  body.pohon-aktif { overflow: hidden; overscroll-behavior: none; }
+  body.pohon-aktif footer.ft-footer { display: none; }
+  .pohon-hal { padding: .7rem 12px 0 !important; }
+  .tree-toolbar { flex-direction: column; align-items: stretch; gap: .55rem; margin-bottom: .55rem !important; }
+  .tree-judul { flex: none; gap: .6rem; }
+  .tree-judul .avatar-ring { font-size: 38px !important; }
+  .tree-judul .avatar { --s: 38px !important; }
+  .tree-toolbar h4 { font-size: 1rem; }
+  .tb-profil { min-height: 36px; padding: .3rem .7rem; }
+  .tree-actions { flex-direction: column; align-items: stretch; gap: .45rem; flex-wrap: nowrap !important; overflow: visible !important; padding: 0; }
+  .tb-seg { display: grid !important; grid-template-columns: 1fr 1fr; width: 100%; }
+  .tb-seg a { text-align: center; padding: .45rem .5rem; }
+  .tb-alat { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .4rem; }
+  .tb-alat .tb-item, .tb-alat .tb-item > .btn { min-height: 36px; padding: .3rem .4rem; font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tree-viewport { min-height: 0; max-height: none; border-radius: 18px; }
+  .pohon-hal > .d-flex.flex-wrap { display: none !important; }   /* keterangan warna disembunyikan agar pohon lebih lega */
+}
+@media (max-width: 767px) {
+  .pohon-hal, .tree-toolbar, .tree-actions, .tb-alat, .tb-seg { max-width: 100%; min-width: 0; }
+  .tb-alat { grid-auto-columns: minmax(0, 1fr); }
+  .tb-alat .tb-item { min-width: 0; }
+  .tb-alat .dropdown.tb-item { overflow: visible; }
+  .tree-judul h4 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 767px) {
+  .tree-judul { width: 100%; max-width: 100%; overflow: hidden; }
+  .tree-judul > .min-w-0 { flex: 1 1 0; min-width: 0; overflow: hidden; }
+  .tree-judul .tb-profil { flex: 0 0 auto; }
+}

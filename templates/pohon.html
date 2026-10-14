@@ -64,34 +64,36 @@
 {%- endmacro %}
 
 {% block content %}
-<div class="container-fluid px-lg-4 py-4">
+<div class="container-fluid px-lg-4 py-4 pohon-hal">
   <div class="tree-toolbar mb-3 fade-up">
-    <div class="d-flex align-items-center gap-3">
+    <div class="tree-judul">
       {{ avatar(p, 48) }}
-      <div>
-        <h4 class="mb-0">Pohon {{ 'leluhur' if mode == 'leluhur' else 'keturunan' }} {{ p.nama }}</h4>
-        <div class="small ft-muted">{% if mode == 'leluhur' %}Garis ayah & ibu ke atas{% else %}Anak, cucu, dan seterusnya beserta pasangan{% endif %} · klik nama untuk berpindah fokus</div>
+      <div class="min-w-0 flex-grow-1">
+        <h4 class="mb-0 text-truncate">Pohon {{ 'leluhur' if mode == 'leluhur' else 'keturunan' }} {{ p.nama }}</h4>
+        <div class="small ft-muted d-none d-md-block">{% if mode == 'leluhur' %}Garis ayah & ibu ke atas{% else %}Anak, cucu, dan seterusnya beserta pasangan{% endif %} · klik nama untuk berpindah fokus</div>
       </div>
+      <a href="{{ url_for('anggota_detail', pid=p.id) }}" class="btn btn-ghost btn-sm tb-profil" title="Profil"><i class="bi bi-person"></i><span class="d-none d-md-inline"> Profil</span></a>
     </div>
-    <div class="d-flex flex-wrap gap-2 align-items-center tree-actions">
-      <div class="seg">
+    <div class="tree-actions">
+      <div class="seg tb-seg">
         <a href="{{ url_for('pohon', pid=p.id, mode='leluhur', kedalaman=depth) }}" class="{{ 'active' if mode == 'leluhur' }}"><i class="bi bi-arrow-up"></i> Leluhur</a>
         <a href="{{ url_for('pohon', pid=p.id, mode='keturunan', kedalaman=depth) }}" class="{{ 'active' if mode == 'keturunan' }}"><i class="bi bi-arrow-down"></i> Keturunan</a>
       </div>
-      {% if mode == 'leluhur' %}
-      <a href="{{ url_for('pohon', pid=p.id, mode='leluhur', kedalaman=depth, saudara=None if saudara else 1, pasangan=0 if pasangan else None) }}" class="btn btn-sm {{ 'btn-soft' if pasangan else 'btn-ghost' }}" title="Tampilkan/sembunyikan pasangan">
-        <i class="bi bi-{{ 'heart-fill' if pasangan else 'heart' }} me-1"></i>Pasangan {{ 'ditampilkan' if pasangan else 'disembunyikan' }}</a>
-      <a href="{{ url_for('pohon', pid=p.id, mode='leluhur', kedalaman=depth, saudara=0 if saudara else 1, pasangan=None if pasangan else 0) }}" class="btn btn-sm {{ 'btn-soft' if saudara else 'btn-ghost' }}" title="Tampilkan/sembunyikan saudara kandung">
-        <i class="bi bi-{{ 'people-fill' if saudara else 'people' }} me-1"></i>Saudara {{ 'ditampilkan' if saudara else 'disembunyikan' }}</a>
-      {% endif %}
-      <div class="dropdown">
-        <button class="btn btn-ghost btn-sm" data-bs-toggle="dropdown"><i class="bi bi-layers me-1"></i>{{ depth }} generasi</button>
-        <ul class="dropdown-menu">{% for d in [2,3,4,5,6,8,10] %}<li><a class="dropdown-item {{ 'active' if d == depth }}" href="{{ url_for('pohon', pid=p.id, mode=mode, kedalaman=d, saudara=None if saudara else 0, pasangan=None if pasangan else 0) }}">{{ d }} generasi</a></li>{% endfor %}</ul>
+      <div class="tb-alat">
+        <div class="dropdown tb-item">
+          <button class="btn btn-ghost btn-sm w-100" data-bs-toggle="dropdown"><i class="bi bi-layers"></i> {{ depth }}<span class="d-none d-md-inline"> generasi</span><span class="d-md-none"> gen</span></button>
+          <ul class="dropdown-menu">{% for d in [2,3,4,5,6,8,10] %}<li><a class="dropdown-item {{ 'active' if d == depth }}" href="{{ url_for('pohon', pid=p.id, mode=mode, kedalaman=d, saudara=None if saudara else 0, pasangan=None if pasangan else 0) }}">{{ d }} generasi</a></li>{% endfor %}</ul>
+        </div>
+        {% if mode == 'leluhur' %}
+        <a href="{{ url_for('pohon', pid=p.id, mode='leluhur', kedalaman=depth, saudara=None if saudara else 1, pasangan=0 if pasangan else None) }}" class="btn btn-sm tb-item {{ 'btn-soft' if pasangan else 'btn-ghost' }}" title="Tampilkan/sembunyikan pasangan">
+          <i class="bi bi-{{ 'heart-fill' if pasangan else 'heart' }}"></i> Pasangan<span class="d-none d-md-inline"> {{ 'ditampilkan' if pasangan else 'disembunyikan' }}</span></a>
+        <a href="{{ url_for('pohon', pid=p.id, mode='leluhur', kedalaman=depth, saudara=0 if saudara else 1, pasangan=None if pasangan else 0) }}" class="btn btn-sm tb-item {{ 'btn-soft' if saudara else 'btn-ghost' }}" title="Tampilkan/sembunyikan saudara kandung">
+          <i class="bi bi-{{ 'people-fill' if saudara else 'people' }}"></i> Saudara<span class="d-none d-md-inline"> {{ 'ditampilkan' if saudara else 'disembunyikan' }}</span></a>
+        {% endif %}
+        {% if mode == 'keturunan' and top.id != p.id %}
+        <a href="{{ url_for('pohon', pid=top.id, mode='keturunan', kedalaman=depth) }}" class="btn btn-soft btn-sm tb-item" title="Mulai dari leluhur tertinggi"><i class="bi bi-tree"></i> Dari {{ top.nama.split()[0] }}</a>
+        {% endif %}
       </div>
-      {% if mode == 'keturunan' and top.id != p.id %}
-      <a href="{{ url_for('pohon', pid=top.id, mode='keturunan', kedalaman=depth) }}" class="btn btn-soft btn-sm" title="Mulai dari leluhur tertinggi"><i class="bi bi-tree me-1"></i>Dari {{ top.nama.split()[0] }}</a>
-      {% endif %}
-      <a href="{{ url_for('anggota_detail', pid=p.id) }}" class="btn btn-ghost btn-sm"><i class="bi bi-person"></i> Profil</a>
     </div>
   </div>
 
