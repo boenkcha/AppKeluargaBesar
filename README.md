@@ -46,6 +46,19 @@ export SMTP_USER=alamat@gmail.com SMTP_PASS=app-password-16-digit
 export MAIL_FROM="Silsilah Keluarga Besar <alamat@gmail.com>"
 ```
 
+## Memasang di PythonAnywhere
+
+1. **Bash console:** `git clone https://github.com/boenkcha/AppKeluargaBesar.git`
+   lalu `mkvirtualenv --python=python3.11 silsilah` dan `pip install -r AppKeluargaBesar/requirements.txt`.
+2. **Tab Web → Add a new web app → Manual configuration → Python 3.11.**
+3. **Source code:** `/home/<username>/AppKeluargaBesar` · **Virtualenv:** `/home/<username>/.virtualenvs/silsilah`.
+4. **WSGI configuration file:** ganti isinya dengan `pythonanywhere_wsgi.py` (sesuaikan `USERNAME`).
+5. **Static files:** URL `/static/` → `/home/<username>/AppKeluargaBesar/static`.
+6. Aktifkan **Force HTTPS**, lalu **Reload**.
+7. Pembaruan: `cd ~/AppKeluargaBesar && git pull`, lalu **Reload** di tab Web.
+
+Akun gratis hanya dapat mengirim email lewat Gmail (`smtp.gmail.com`) dan web app perlu diperpanjang tiap 3 bulan.
+
 ## Catatan keamanan & privasi
 
 - Jangan unggah `silsilah.db`, salinan cadangannya, folder `uploads/`, maupun `.secret_key` — semuanya sudah dikecualikan di `.gitignore`.

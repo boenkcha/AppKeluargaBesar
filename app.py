@@ -43,6 +43,9 @@ def _secret_key():
 
 app = Flask(__name__)
 app.secret_key = _secret_key()
+# di belakang proxy (PythonAnywhere, Nginx): pakai skema & host asli agar link yang dibuat memakai https://
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 serializer = URLSafeTimedSerializer(app.secret_key)
 
