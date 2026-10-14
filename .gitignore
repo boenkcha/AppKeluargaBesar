@@ -20,3 +20,4 @@ __pycache__/
 
 # paket data untuk dipindah ke server (berisi data pribadi)
 *.zip
+uploads_cadangan*/
