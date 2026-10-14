@@ -1,0 +1,39 @@
+{% from "_macros.html" import avatar, nama with context %}
+{% macro ornamen(cls='') -%}
+<svg class="ornamen {{ cls }}" viewBox="0 0 260 28" aria-hidden="true">
+  <defs><linearGradient id="og" x1="0" x2="1"><stop offset="0" stop-color="#a8741a" stop-opacity="0"/><stop offset=".25" stop-color="#c99a3b"/><stop offset=".5" stop-color="#f3d77c"/><stop offset=".75" stop-color="#c99a3b"/><stop offset="1" stop-color="#a8741a" stop-opacity="0"/></linearGradient></defs>
+  <path d="M0 14 H104 M156 14 H260" stroke="url(#og)" stroke-width="1.4"/>
+  <path d="M104 14 c8 -10 16 -10 22 0 c-6 10 -14 10 -22 0z M156 14 c-8 -10 -16 -10 -22 0 c6 10 14 10 22 0z" fill="none" stroke="#c99a3b" stroke-width="1.2"/>
+  <path d="M130 4 L137 14 L130 24 L123 14 Z" fill="#d9a93a"/>
+  <circle cx="98" cy="14" r="1.8" fill="#c99a3b"/><circle cx="162" cy="14" r="1.8" fill="#c99a3b"/>
+</svg>
+{%- endmacro %}
+
+{% macro sampul_bg(k) -%}
+{%- if k.sampul -%}background-image: linear-gradient(180deg, rgba(36,24,52,.15), rgba(36,24,52,.72)), url('{{ url_for('foto', name=k.sampul) }}');{%- endif -%}
+{%- endmacro %}
+
+{% macro pasangan_leluhur(fam, lid, size=84) -%}
+{%- set L = fam.get(lid) -%}
+{%- if L -%}
+<div class="leluhur-duo">
+  {{ avatar(L, size) }}
+  {% for m in fam.marriages(lid)[:2] %}{{ avatar(fam.get(m.spouse), size) }}{% endfor %}
+</div>
+<div class="leluhur-nama">
+  {{ nama(L) }}{% for m in fam.marriages(lid)[:2] %} <span class="amp">&amp;</span> {{ nama(fam.get(m.spouse)) }}{% endfor %}
+</div>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro statbar(st) -%}
+{%- if st -%}
+<div class="kstats">
+  <div><b>{{ st.generasi }}</b><span>Generasi</span></div>
+  <div><b>{{ st.anak }}</b><span>Cabang</span></div>
+  <div><b>{{ st.keturunan }}</b><span>Keturunan</span></div>
+  <div><b>{{ st.cucu }}</b><span>Cucu</span></div>
+  <div><b>{{ st.berpulang }}</b><span>Telah berpulang</span></div>
+</div>
+{%- endif -%}
+{%- endmacro %}

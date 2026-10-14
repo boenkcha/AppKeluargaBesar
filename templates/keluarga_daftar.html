@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, nama with context %}
+{% from "_cerita.html" import ornamen, sampul_bg with context %}
+{% block title %}Cerita Keluarga{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="text-center mb-4 fade-up">
+    <div class="k-eyebrow dark">Mukadimah Silsilah</div>
+    <h1 class="k-title dark">Cerita Keluarga</h1>
+    <p class="ft-muted mb-2">Kisah asal-usul setiap keluarga besar — agar anak-cucu tahu dari mana mereka berasal.</p>
+    {{ ornamen() }}
+    {% if can_tulis_cerita() %}<a href="{{ url_for('keluarga_tulis') }}" class="btn btn-primary mt-2"><i class="bi bi-feather me-1"></i>Tulis cerita keluarga</a>{% endif %}
+  </div>
+  {% if kosong %}
+  <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+    {% for gb in kosong %}<a href="{{ url_for('keluarga_tulis', leluhur=gb.leluhur) }}" class="k-tab ghost"><span class="k-tab-garis">Garis {{ gb.garis }} belum punya cerita</span><span class="k-tab-nama"><i class="bi bi-plus"></i> Tulis cerita {{ nama_pendek(fam.get(gb.leluhur).nama) }}</span></a>{% endfor %}
+  </div>
+  {% endif %}
+  {% if items %}
+  <div class="k-tree-list">
+    {% for it in items %}{% set k = it.k %}
+    <div class="k-tree-row" style="--lvl: {{ it.level }}">
+      <a href="{{ url_for('keluarga_lihat', kid=k.id) }}" class="k-tile fade-up">
+        <div class="k-tile-cover {{ 'has-cover' if k.sampul }}" style="{{ sampul_bg(k) }}">
+          <div class="k-tile-title">{{ k.judul }}</div>
+          {% if k.asal %}<div class="k-tile-asal"><i class="bi bi-geo-alt"></i> {{ k.asal }}</div>{% endif %}
+        </div>
+        <div class="p-3">
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            {% if it.posisi %}<span class="chip k-chip"><i class="bi bi-person-heart"></i> {{ it.posisi.label }}</span>{% endif %}
+            {% for ind in it.induk %}<span class="chip"><i class="bi bi-arrow-90deg-up"></i> Cabang dari {{ ind.judul }}</span>{% endfor %}
+          </div>
+          {% if it.posisi and it.posisi.kalimat %}<div class="small mb-2">{{ it.posisi.kalimat }}</div>{% endif %}
+          {% if k.tagline %}<div class="fst-italic ft-muted small mb-2">“{{ k.tagline }}”</div>{% endif %}
+          {% if it.stats %}<div class="d-flex flex-wrap gap-1">
+            <span class="chip chip-accent">{{ it.stats.generasi }} generasi</span>
+            <span class="chip">{{ it.stats.keturunan }} keturunan</span>
+            <span class="chip">{{ it.stats.anak }} cabang</span></div>{% endif %}
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="ft-card empty-state">
+    <div class="ic"><i class="bi bi-book"></i></div>
+    <h5 class="mt-3">Belum ada cerita keluarga</h5>
+    <p>Mukadimah ditulis oleh Super Family atau admin.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

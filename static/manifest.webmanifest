@@ -1,0 +1,30 @@
+{
+  "name": "Silsilah Keluarga Besar",
+  "short_name": "Silsilah",
+  "description": "Catat, telusuri, dan rawat silsilah keluarga.",
+  "start_url": "/beranda",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdf8f3",
+  "theme_color": "#fdf8f3",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

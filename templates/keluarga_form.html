@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, picker with context %}
+{% block title %}{{ 'Ubah' if k else 'Tulis' }} cerita keluarga{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:860px">
+  <a href="{{ url_for('keluarga_lihat', kid=k.id) if k else url_for('keluarga_daftar') }}" class="small ft-muted"><i class="bi bi-arrow-left"></i> Kembali</a>
+  <h2 class="mt-2 mb-1">{{ 'Ubah' if k else 'Tulis' }} cerita keluarga</h2>
+  <p class="ft-muted">Mukadimah adalah pembuka silsilah: kisah asal-usul, nilai keluarga, dan pesan untuk anak-cucu.</p>
+  {% set L = fam.get(v.leluhur_id|int) if v.leluhur_id and (v.leluhur_id|string).isdigit() else None %}
+  {% set ln = nama_pendek(L.nama) if L else 'nama leluhur' %}
+  <form method="post" enctype="multipart/form-data" class="d-flex flex-column gap-4" id="formCerita" data-leluhur="{{ ln }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="ft-card form-section">
+      <h5><i class="bi bi-bookmark-star"></i>Identitas keluarga</h5>
+      <div class="row g-3 mt-1">
+        <div class="col-12"><label class="form-label">Judul <span class="text-danger">*</span></label>
+          <input name="judul" class="form-control" required maxlength="120" autocapitalize="words" value="{{ v.judul or v.judul_saran or '' }}" data-ph="mis. Keluarga Besar {nama}" placeholder="mis. Keluarga Besar {{ ln }}"></div>
+        <div class="col-md-7"><label class="form-label">Semboyan / tagline</label>
+          <input name="tagline" class="form-control" maxlength="160" value="{{ v.tagline or '' }}" placeholder="Satu kalimat yang menggambarkan keluarga ini"></div>
+        <div class="col-md-5"><label class="form-label">Asal daerah</label>
+          <input name="asal" class="form-control" maxlength="120" autocapitalize="words" value="{{ v.asal or '' }}" placeholder="mis. nama kota / kampung halaman asal"></div>
+        {% if kandidat %}
+        <div class="col-12">
+          <label class="form-label">Cerita keluarga siapa? <span class="ft-muted fw-normal">— pilih leluhur Anda</span></label>
+          <div class="leluhur-pilih">
+            {% for c in kandidat %}{% set cp = fam.get(c.id) %}
+            {% if c.cerita %}
+            <a class="lp-item ada" href="{{ url_for('keluarga_lihat', kid=c.cerita.id) }}">
+              {{ avatar(cp, 40) }}
+              <span class="lp-teks"><b>{{ nama_pendek(cp.nama, 3) }}</b><small>{{ c.sebutan }}{% if c.garis %} · {{ c.garis }}{% endif %}</small></span>
+              <span class="chip k-chip"><i class="bi bi-book"></i> sudah ada cerita</span>
+            </a>
+            {% else %}
+            <label class="lp-item">
+              <input type="radio" name="leluhur_id" value="{{ c.id }}" data-nama="{{ nama_pendek(cp.nama) }}" {{ 'checked' if (v.leluhur_id|string) == (c.id|string) }}>
+              {{ avatar(cp, 40) }}
+              <span class="lp-teks"><b>{{ nama_pendek(cp.nama, 3) }}{% for m in fam.marriages(c.id)[:1] %} & {{ nama_pendek(fam.get(m.spouse).nama) }}{% endfor %}</b><small>{{ c.sebutan }}{% if c.garis %} · {{ c.garis }}{% endif %}</small></span>
+            </label>
+            {% endif %}
+            {% endfor %}
+          </div>
+          <div class="form-hint">Pasangan dan seluruh keturunan leluhur yang dipilih otomatis ikut terhitung.</div>
+        </div>
+        {% endif %}
+        {% if me.is_admin or not kandidat %}
+        <div class="col-md-7">{{ picker('leluhur', ('Atau pilih leluhur lain' if kandidat else 'Leluhur (kepala keluarga)'), '', id_name=('leluhur_lain' if kandidat else 'leluhur_id'), id_val=(None if kandidat else v.leluhur_id), fam=fam, allow_new=false, hint=('Khusus admin: untuk keluarga di luar garis Anda.' if kandidat else 'Pasangannya dan seluruh keturunannya otomatis ikut terhitung.')) }}</div>
+        {% endif %}
+        <div class="col-md-5"><label class="form-label">Foto sampul <span class="ft-muted fw-normal">(opsional)</span></label>
+          <input type="file" name="sampul" accept="image/*" class="form-control">
+          <div class="form-hint">Foto keluarga atau rumah asal, mendatar. {% if k and k.sampul %}<label class="ms-1"><input type="checkbox" name="hapus_sampul" value="1"> hapus sampul</label>{% endif %}</div></div>
+      </div>
+    </div>
+    <div class="ft-card form-section">
+      <h5><i class="bi bi-feather"></i>Mukadimah</h5>
+      <p class="form-hint mt-0">Pisahkan paragraf dengan baris kosong. Gunakan **teks** untuk tebal dan *teks* untuk miring.</p>
+      <textarea name="mukadimah" rows="12" class="form-control" maxlength="12000" data-ph="Alkisah, {nama} berasal dari {asal}. Ceritakan bagaimana beliau bertemu pasangannya, perjuangan membesarkan anak-anak, dan nilai-nilai yang ingin diwariskan kepada anak-cucu…" placeholder="Alkisah, {{ ln }} berasal dari {{ v.asal or 'kampung halamannya' }}. Ceritakan bagaimana beliau bertemu pasangannya, perjuangan membesarkan anak-anak, dan nilai-nilai yang ingin diwariskan kepada anak-cucu…">{{ v.mukadimah or '' }}</textarea>
+      <div class="row g-3 mt-2">
+        <div class="col-md-8"><label class="form-label">Kutipan / pesan leluhur</label>
+          <input name="kutipan" class="form-control" maxlength="500" value="{{ v.kutipan or '' }}" placeholder="Pesan atau nasihat yang selalu diingat keluarga"></div>
+        <div class="col-md-4"><label class="form-label">Oleh</label>
+          <input name="kutipan_oleh" class="form-control" maxlength="120" value="{{ v.kutipan_oleh or '' }}" data-ph="mis. {nama}" placeholder="mis. {{ ln }}"></div>
+      </div>
+    </div>
+    <div class="ft-card form-section">
+      <h5><i class="bi bi-hourglass-split"></i>Tonggak sejarah</h5>
+      <p class="form-hint mt-0">Satu peristiwa per baris, diawali tahun. Contoh: <code>1950 — Menikah di kampung halaman</code></p>
+      <textarea name="tonggak" rows="6" class="form-control" maxlength="4000" data-ph="19xx — {nama} lahir di {asal}&#10;19xx — Menikah dengan …&#10;19xx — Lahir anak pertama, …" placeholder="19xx — {{ ln }} lahir di {{ v.asal or '…' }}&#10;19xx — Menikah dengan …&#10;19xx — Lahir anak pertama, …">{{ v.tonggak or '' }}</textarea>
+    </div>
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center form-actions">
+      {% if k and (me.is_admin or k.created_by == me.id) %}<button form="hapusK" class="btn btn-ghost text-danger"><i class="bi bi-trash3"></i><span class="d-none d-md-inline ms-1">Hapus cerita</span></button>{% else %}<span></span>{% endif %}
+      <div class="d-flex gap-2"><a href="{{ url_for('keluarga_lihat', kid=k.id) if k else url_for('keluarga_daftar') }}" class="btn btn-ghost">Batal</a>
+        <button class="btn btn-primary px-4"><i class="bi bi-check2 me-1"></i>Simpan cerita</button></div>
+    </div>
+  </form>
+  {% if k %}<form id="hapusK" method="post" action="{{ url_for('keluarga_hapus', kid=k.id) }}" data-confirm="Hapus cerita “{{ k.judul }}”?"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"></form>{% endif %}
+</div>
+{% endblock %}

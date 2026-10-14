@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Status Akun{% endblock %}
+{% block content %}
+{% set s = {
+  'pending':  ('🌱', 'Pendaftaran sedang ditinjau', 'Terima kasih, ' ~ (nama or '') ~ '! Admin keluarga akan memeriksa pendaftaran Anda. Begitu disetujui, tautan aktivasi akan dikirim ke email Anda. Biasanya tidak lama — sambil menunggu, mungkin Anda bisa mengingat-ingat nama kakek dan nenek buyut 😊'),
+  'approved': ('📬', 'Tinggal satu langkah lagi', 'Pendaftaran Anda sudah disetujui. Silakan buka email dan klik tautan aktivasi. Tidak menemukannya? Cek folder Spam/Promosi, atau minta admin mengirim ulang.'),
+  'rejected': ('🤝', 'Pendaftaran belum dapat diverifikasi', 'Mohon maaf, admin belum dapat memastikan hubungan Anda dengan keluarga ini. Silakan hubungi kerabat yang mengelola silsilah untuk konfirmasi — pintu silaturahmi selalu terbuka.'),
+  'disabled': ('⏸️', 'Akun sedang tidak aktif', 'Akun Anda dinonaktifkan sementara. Silakan hubungi admin keluarga bila ada pertanyaan.'),
+  'expired':  ('⌛', 'Tautan aktivasi sudah kedaluwarsa', 'Tidak masalah — minta admin keluarga untuk mengirim ulang tautan aktivasi.'),
+  'tamu_habis': ('🔒', 'Link tamu tidak berlaku', 'Akses tamu ini sudah berakhir atau dicabut oleh admin silsilah. Anda bisa mengajukan permintaan akses baru.'),
+}[status] %}
+<div class="auth-wrap">
+  <div class="ft-card auth-card text-center fade-up">
+    <div class="status-emoji mb-3">{{ s[0] }}</div>
+    <h3>{{ s[1] }}</h3>
+    <p class="ft-muted">{{ s[2] }}</p>
+    {% if status == 'pending' %}
+    <div class="d-flex justify-content-center gap-2 my-4 small">
+      <span class="chip chip-primary"><i class="bi bi-check2"></i> Daftar</span>
+      <span class="chip chip-accent"><i class="bi bi-hourglass-split"></i> Ditinjau admin</span>
+      <span class="chip"><i class="bi bi-envelope"></i> Aktivasi</span>
+    </div>
+    {% endif %}
+    {% if status == 'tamu_habis' %}<a href="{{ url_for('tamu_minta') }}" class="btn btn-primary mt-2">Minta akses tamu</a>{% endif %}
+    <a href="{{ url_for('index') }}" class="btn btn-ghost mt-2">Kembali ke beranda</a>
+  </div>
+</div>
+{% endblock %}

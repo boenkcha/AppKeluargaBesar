@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, nama with context %}
+{% block title %}Keluarga{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap gap-3 align-items-end justify-content-between mb-4 fade-up">
+    <div>
+      <h2 class="mb-1">Keluarga besar</h2>
+      <p class="ft-muted mb-0">{{ rows|length }} orang{% if q %} untuk “{{ q }}”{% endif %} · setiap nama adalah bagian dari cerita.</p>
+    </div>
+    <a href="{{ url_for('anggota_tambah') }}" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Tambah anggota</a>
+  </div>
+  <form class="d-flex flex-wrap gap-3 align-items-center mb-4 fade-up d1">
+    <div class="input-icon flex-grow-1" style="min-width:240px">
+      <i class="bi bi-search"></i>
+      <input name="q" type="search" value="{{ q }}" class="form-control" enterkeyhint="search" autocapitalize="words" placeholder="Cari nama, pekerjaan, atau kota…">
+      <input type="hidden" name="f" value="{{ filt }}">
+      {% if urut == 'tertua' %}<input type="hidden" name="urut" value="tertua">{% endif %}
+    </div>
+    <div class="seg">
+      {% for key, label in [('', 'Semua'), ('akun', 'Terverifikasi'), ('foto', 'Berfoto'), ('wafat', 'Mengenang')] %}
+      <a href="{{ url_for('anggota', q=q or None, f=key or None, urut=urut if urut == 'tertua' else None) }}" class="{{ 'active' if filt == key }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <div class="seg">
+      <a href="{{ url_for('anggota', q=q or None, f=filt or None) }}" class="{{ 'active' if urut == 'nama' }}"><i class="bi bi-sort-alpha-down"></i> Nama</a>
+      <a href="{{ url_for('anggota', q=q or None, f=filt or None, urut='tertua') }}" class="{{ 'active' if urut == 'tertua' }}"><i class="bi bi-sort-numeric-down"></i> Tertua</a>
+    </div>
+  </form>
+
+  {% if rows %}
+  <div class="row g-3">
+    {% for p in rows %}
+    {% set ortu = fam.parents(p.id) %}
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+      <a href="{{ url_for('anggota_detail', pid=p.id) }}" class="ft-card ft-card-hover member-card">
+        {{ avatar(p, 56) }}
+        <div class="min-w-0">
+          <div class="nm" title="{{ p.nama }}">{% if pekan_ultah(p) %}<span title="Pekan ulang tahun">🎂</span> {% endif %}{{ nama(p) }}{% if p.id in claimed %}&nbsp;<i class="bi bi-patch-check-fill small" style="color:var(--ft-primary)" title="Terverifikasi"></i>{% endif %}</div>
+          <div class="sub">{{ p.pekerjaan or (lahir(p) and 'Lahir ' ~ lahir(p)) or '—' }}</div>
+          {% if ortu %}<div class="sub"><i class="bi bi-diagram-2"></i> {{ 'Putra' if p.jenis_kelamin == 'L' else 'Putri' if p.jenis_kelamin == 'P' else 'Anak' }} {% for x in ortu %}{{ fam.people[x].nama.split()[0] }}{{ ' & ' if not loop.last }}{% endfor %}</div>{% endif %}
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="ft-card empty-state">
+    <div class="ic"><i class="bi bi-search-heart"></i></div>
+    <h5 class="mt-3">Belum ada yang cocok</h5>
+    <p>Mungkin namanya belum dicatat? Anda bisa menambahkannya sekarang.</p>
+    <a href="{{ url_for('anggota_tambah') }}" class="btn btn-primary btn-sm">Tambah anggota</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

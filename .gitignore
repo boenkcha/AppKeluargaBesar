@@ -1,0 +1,19 @@
+# --- Data pribadi keluarga: JANGAN diunggah ---
+*.db
+*.db copy
+*.db-journal
+*.sqlite
+*.sqlite3
+silsilah_cadangan*
+uploads/
+.secret_key
+.env
+
+# --- Lingkungan & cache ---
+.venv/
+venv*/
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/

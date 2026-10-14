@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, nama, picker, karangan, kelopak, bendera, topi_pesta with context %}
+{% from "_ultah.html" import modal_ucapan with context %}
+{% block title %}{{ p.nama }}{% endblock %}
+{% block content %}
+{% set pct, missing = completeness(p) %}
+{% set ayah = fam.get(p.ayah_id) %}{% set ibu = fam.get(p.ibu_id) %}
+<div class="container py-4">
+  <div class="row g-4">
+    <div class="col-lg-8 d-flex flex-column gap-4">
+      {% set wi = wafat_info(p) %}{% set pu = pekan_ultah(p) %}
+      <div class="ft-card profile-head fade-up {{ 'memorial' if p.wafat }} {{ 'pesta' if pu }}">
+        {% if pu %}
+        {{ bendera() }}
+        <div class="pesta-hias" aria-hidden="true">
+          <span class="pb pb1"></span><span class="pb pb2"></span><span class="pb pb3"></span>
+          {% for i in range(12) %}<i class="kilau" style="--x:{{ (i * 29 + 7) % 100 }}%;--y:{{ (i * 17 + 10) % 70 }}%;--d:{{ (i * 0.37) % 2.4 }}s"></i>{% endfor %}
+        </div>
+        <div class="pesta-eyebrow">🎉 Pekan Ulang Tahun 🎉</div>
+        {% endif %}
+        {% if p.wafat %}{{ kelopak(16) }}
+        <div class="mem-eyebrow"><span></span>Mengenang<span></span></div>
+        {% endif %}
+        <div class="d-flex flex-wrap gap-4 align-items-end pt-4">
+          {% if p.wafat %}<div class="mem-foto">{{ karangan(120) }}{{ avatar(p, 120) }}</div>
+          {% elif pu %}<div class="ultah-foto">{{ topi_pesta() }}{{ avatar(p, 120) }}</div>
+          {% else %}{{ avatar(p, 120) }}{% endif %}
+          <div class="flex-grow-1 min-w-0">
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              {% if akun %}<span class="chip chip-primary"><i class="bi bi-patch-check-fill"></i> Anggota terverifikasi</span>{% endif %}
+              {% if p.wafat %}<span class="chip"><i class="bi bi-flower1"></i> Telah berpulang</span>{% endif %}
+              {% if me.person_id == p.id %}<span class="chip chip-accent"><i class="bi bi-star-fill"></i> Ini Anda</span>{% endif %}
+            </div>
+            <h2 class="mb-1 {{ 'mem-nama' if p.wafat }} {{ 'pesta-nama' if pu }}">{{ nama(p) }}{% if pu %} <span class="lencana-ke">ke-{{ pu.ke }}</span>{% endif %}</h2>
+            {% if pu %}<div class="pesta-sub">{% if pu.hari == 0 %}Hari ini ulang tahunnya! 🎂{% else %}Berulang tahun {{ -pu.hari }} hari yang lalu · {{ pu.tanggal }} 🎈{% endif %}</div>{% endif %}
+            {% if wi %}
+            {% if wi.rentang %}<div class="mem-rentang">{{ wi.rentang }}</div>{% endif %}
+            <div class="ft-muted small">
+              {% if wi.tanggal %}Berpulang {{ wi.tanggal }}{% if wi.usia %} dalam usia {{ wi.usia }} tahun{% endif %}{% if wi.lalu %} · {{ wi.lalu }}{% endif %}{% else %}Telah berpulang · dikenang dengan penuh cinta{% endif %}
+            </div>
+            {% else %}
+            <div class="ft-muted">
+              {{ {'L':'Laki-laki','P':'Perempuan'}.get(p.jenis_kelamin, '') }}{% if p.jenis_kelamin and p.tahun_lahir %} · {% endif %}{% if lahir(p) %}Lahir {{ lahir(p) }}{% if umur(p) is not none %} · {{ umur(p) }} tahun{% endif %}{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            {% if pu and not is_tamu() %}
+            <button type="button" class="btn btn-sm btn-rayakan {{ 'sudah' if rayak.saya }}" id="rayakanBtn" data-url="{{ url_for('rayakan_ultah', pid=p.id) }}" data-csrf="{{ csrf_token() }}" data-nama="{{ nama_pendek(p.nama) }}" data-sendiri="{{ 1 if me.person_id == p.id else 0 }}">
+              🎉 <span>{{ 'Ikut merayakan' if rayak.saya else 'Rayakan' }}</span> · <b id="rayakanN">{{ rayak.jumlah }}</b></button>
+            {% elif pu %}<span class="btn btn-sm btn-rayakan sudah" style="cursor:default">🎉 {{ rayak.jumlah }} ikut merayakan</span>{% endif %}
+            {% if pu and me.person_id != p.id and not is_tamu() %}
+            <button type="button" class="btn btn-sm btn-ucap" data-ucap-url="{{ url_for('ucapan_kirim', pid=p.id) }}" data-ucap-nama="{{ nama_pendek(p.nama) }}" data-ucap-ke="{{ pu.ke }}" data-ucap-tgl="{{ pu.tanggal }}"><i class="bi bi-gift"></i> Kirim ucapan</button>
+            {% endif %}
+            {% if p.wafat and not is_tamu() %}
+            <button type="button" class="btn btn-sm btn-tabur {{ 'sudah' if tabur.saya }}" id="taburBtn" data-url="{{ url_for('tabur_bunga', pid=p.id) }}" data-csrf="{{ csrf_token() }}" data-nama="{{ nama_pendek(p.nama) }}">
+              <i class="bi bi-flower3 me-1"></i><span>{{ 'Bunga ditabur' if tabur.saya else 'Tabur bunga' }}</span> · <b id="taburN">{{ tabur.jumlah }}</b></button>
+            {% elif p.wafat %}<span class="btn btn-sm btn-tabur sudah" style="cursor:default"><i class="bi bi-flower3 me-1"></i>{{ tabur.jumlah }} taburan bunga</span>{% endif %}
+            <a href="{{ url_for('pohon', pid=p.id) }}" class="btn btn-primary btn-sm"><i class="bi bi-diagram-3 me-1"></i>Pohon</a>
+            {% for t in tautan %}<a href="{{ t.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-tautan"><i class="bi bi-link-45deg me-1"></i>Jelajahi di {{ t.label }} <i class="bi bi-box-arrow-up-right small"></i></a>{% endfor %}
+            {% if me.person_id and me.person_id != p.id %}<a href="{{ url_for('bandingkan', a=me.person_id, b=p.id) }}" class="btn btn-soft btn-sm"><i class="bi bi-arrow-left-right me-1"></i>Hubungan</a>{% endif %}
+            {% if can_edit(p) %}<a href="{{ url_for('profil') if me.person_id == p.id else url_for('anggota_ubah', pid=p.id) }}" class="btn btn-ghost btn-sm"><i class="bi bi-pencil me-1"></i>Ubah</a>
+            {% elif not is_tamu() %}<a href="{{ url_for('anggota_ubah', pid=p.id) }}" class="btn btn-ghost btn-sm"><i class="bi bi-send me-1"></i>Usulkan perubahan</a>{% endif %}
+          </div>
+        </div>
+        {% if cerita %}
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          {% for k in cerita %}<a href="{{ url_for('keluarga_lihat', kid=k.id) }}" class="chip k-chip"><i class="bi bi-book"></i> Bagian dari {{ k.judul }}</a>{% endfor %}
+        </div>
+        {% endif %}
+        {% if rel and rel.kind %}
+        <div class="mt-4 p-3 rounded-4 d-flex align-items-center gap-3" style="background:var(--ft-primary-soft)">
+          <i class="bi bi-heart-fill fs-4" style="color:var(--ft-primary)"></i>
+          <div class="flex-grow-1">Beliau adalah <b>{{ rel.ab.label }}</b> Anda <span class="ft-muted small">— {{ rel.ab.desc }}</span></div>
+          <a href="{{ url_for('bandingkan', a=me.person_id, b=p.id) }}" class="small fw-semibold text-nowrap">Lihat jalur <i class="bi bi-arrow-right"></i></a>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if ui and ui.boleh and not p.wafat %}
+      <div class="ft-card p-4 fade-up d1 ultah-card" id="ucapan">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <div class="ultah-emoji">🎂</div>
+          <div class="flex-grow-1">
+            <div class="fw-bold">{% if ui.hari == 0 %}Hari ini ulang tahun ke-{{ ui.ke }}! 🎉{% elif ui.hari > 0 %}Ulang tahun ke-{{ ui.ke }} · {{ ui.tanggal }} ({{ ui.hari }} hari lagi){% else %}Baru saja berulang tahun ke-{{ ui.ke }} · {{ ui.tanggal }}{% endif %}</div>
+            <div class="small ft-muted">{% if ucapan %}{{ ucapan|length }} keluarga sudah menitipkan ucapan{% else %}Belum ada ucapan — jadilah yang pertama{% endif %}{% if not ui.sudah_tiba %} · dirahasiakan sampai harinya tiba{% endif %}</div>
+          </div>
+          {% if me.person_id != p.id and not is_tamu() %}
+          <button type="button" class="btn btn-sm btn-ucap" data-ucap-url="{{ url_for('ucapan_kirim', pid=p.id) }}" data-ucap-nama="{{ nama_pendek(p.nama) }}" data-ucap-ke="{{ ui.ke }}" data-ucap-tgl="{{ ui.tanggal }}">
+            <i class="bi bi-gift"></i> {{ 'Ubah ucapan' if ucapan|selectattr('user_id', 'equalto', me.id)|list else 'Kirim ucapan' }}</button>
+          {% endif %}
+        </div>
+        {% if ucapan and (ui.sudah_tiba or (me.is_admin and me.person_id != p.id)) %}
+        <div class="kartu-geser mt-3">
+          {% for c in ucapan %}
+          <div class="kartu-ucap kecil"><div class="kartu-stiker">{{ c.stiker }}</div><div class="kartu-pesan">{{ c.pesan }}</div>
+            <div class="kartu-dari">— {{ c.oleh or 'Keluarga' }}</div></div>
+          {% endfor %}
+        </div>
+        {% elif ucapan %}
+        {% for c in ucapan if c.user_id == me.id %}<div class="small mt-2 ft-muted"><i class="bi bi-lock"></i> Ucapan Anda: {{ c.stiker }} “{{ c.pesan }}”</div>{% endfor %}
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if p.wafat %}
+      <div class="ft-card p-4 fade-up d1 kenangan-card" id="kenangan">
+        <div class="text-center mb-3">
+          <div class="mem-eyebrow dark"><span></span>Buku Kenangan<span></span></div>
+          <h4 class="mem-judul">Kenangan & Doa untuk {{ nama_pendek(p.nama) }}</h4>
+          {% if p.bio and not p.wafat %}<p class="mem-bio">“{{ p.bio }}”</p>{% endif %}
+        </div>
+        {% if not is_tamu() %}
+        <form method="post" action="{{ url_for('kenangan_tulis', pid=p.id) }}" class="kenangan-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <textarea name="pesan" rows="2" maxlength="800" class="form-control" required placeholder="Tuliskan kenangan, cerita singkat, atau doa untuk {{ nama_pendek(p.nama) }}…"></textarea>
+          <button class="btn btn-sm btn-tabur mt-2"><i class="bi bi-feather me-1"></i>Kirim kenangan</button>
+        </form>
+        {% endif %}
+        <div class="kenangan-list">
+          {% for k in kenangan %}
+          <div class="kenangan-item">
+            <i class="bi bi-flower1"></i>
+            <div class="flex-grow-1 min-w-0">
+              <div class="kenangan-pesan">{{ k.pesan }}</div>
+              <div class="small ft-muted mt-1">— {{ k.oleh or 'Keluarga' }}{% if k.oleh_pid in fam.people %}{% set rr = fam.relation(k.oleh_pid, p.id) %}{% if rr.ab %}, {{ rr.ab.label|lower }}{% endif %}{% endif %} · {{ k.created_at|tgl }}</div>
+            </div>
+            {% if me.is_admin or k.user_id == me.id %}<form method="post" action="{{ url_for('kenangan_hapus', kid=k.id) }}" data-confirm="Hapus kenangan ini?"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm px-2" title="Hapus"><i class="bi bi-x-lg"></i></button></form>{% endif %}
+          </div>
+          {% else %}
+          <div class="text-center small ft-muted py-2">Belum ada kenangan. Jadilah yang pertama menuliskannya.</div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if usulan and not is_tamu() %}
+      <div class="ft-card p-4 fade-up d1 usulan-card">
+        <h5 class="mb-1"><i class="bi bi-inbox me-1"></i>Usulan perubahan <span class="chip chip-accent">{{ usulan|length }}</span></h5>
+        <p class="small ft-muted mb-3">{% if can_edit(p) %}Tinjau usulan dari kerabat. Yang disetujui langsung diterapkan.{% else %}Menunggu tinjauan pengelola data.{% endif %}</p>
+        {% for u in usulan %}
+        <div class="usulan-item">
+          <div class="d-flex justify-content-between flex-wrap gap-1">
+            <div class="small"><b>{{ u.oleh }}</b>{% if u.oleh_pid in fam.people %}{% set rr = fam.relation(u.oleh_pid, p.id) %}<span class="ft-muted"> · {{ rr.ab.label|lower if rr.ab else 'kerabat' }}</span>{% endif %}</div>
+            <div class="small ft-muted">{{ u.created_at|tgl }}</div>
+          </div>
+          <ul class="small my-2 ps-3">{% for x in loads(u.ringkasan) %}<li>{{ x }}</li>{% endfor %}</ul>
+          <div class="d-flex gap-2">
+            {% if can_edit(p) %}
+            <form method="post" action="{{ url_for('usulan_aksi', uid=u.id, aksi='setujui') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-primary btn-sm"><i class="bi bi-check2"></i> Setujui</button></form>
+            <form method="post" action="{{ url_for('usulan_aksi', uid=u.id, aksi='tolak') }}" data-confirm="Tolak usulan ini?"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm">Tolak</button></form>
+            {% elif u.user_id == me.id %}
+            <form method="post" action="{{ url_for('usulan_aksi', uid=u.id, aksi='batal') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm">Batalkan usulan saya</button></form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% for d in (kembar if not is_tamu() else []) %}{% set o = fam.get(d.b if d.a == p.id else d.a) %}
+      <div class="ft-card p-4 fade-up d1" style="border-color:#cfe3f7">
+        <h6 class="fw-bold mb-1"><i class="bi bi-intersect me-1" style="color:var(--ft-sky)"></i>Kemungkinan orang yang sama</h6>
+        <p class="small ft-muted mb-3">Data ini mirip dengan data lain yang dicatat kerabat. Bila memang orang yang sama, gabungkan agar silsilah tersambung tanpa data kembar.</p>
+        <a href="{{ url_for('anggota_detail', pid=o.id) }}" class="rel-item mb-2" style="background:var(--ft-surface-2)">{{ avatar(o, 42) }}
+          <div class="min-w-0"><div class="fw-semibold">{{ o.nama }}</div><div class="r">{{ ringkas(o.id) or 'Belum ada data keluarga' }}</div></div>
+          <span class="chip chip-accent ms-auto">{{ (d.score * 100)|round|int }}%</span></a>
+        <div class="d-flex flex-wrap gap-1 mb-3">{% for r in d.reasons %}<span class="chip">{{ r }}</span>{% endfor %}</div>
+        <form method="post" action="{{ url_for('gabung') }}" data-confirm="Gabungkan “{{ o.nama }}” ke data ini? Relasi dipindahkan dan data kosong dilengkapi.">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="simpan" value="{{ p.id }}"><input type="hidden" name="hapus" value="{{ o.id }}">
+          <button class="btn btn-soft btn-sm"><i class="bi bi-intersect me-1"></i>Ya, orang yang sama — gabungkan</button>
+        </form>
+      </div>
+      {% endfor %}
+
+      {% if p.bio %}
+      <div class="ft-card p-4 fade-up d1">
+        <h6 class="ft-muted text-uppercase small fw-bold mb-2" style="letter-spacing:.08em"><i class="bi bi-quote"></i> Cerita</h6>
+        <p class="mb-0" style="white-space:pre-line;line-height:1.7">{{ p.bio }}</p>
+      </div>
+      {% endif %}
+
+      <div class="ft-card p-4 fade-up d2">
+        <h5 class="mb-2">Keluarga inti</h5>
+        <div class="row g-4">
+          <div class="col-md-6 rel-group">
+            <h6>Orang tua</h6>
+            {% for par, role, jk in [(ayah, 'ayah', 'L'), (ibu, 'ibu', 'P')] %}
+              {% if par %}
+              <a href="{{ url_for('anggota_detail', pid=par.id) }}" class="rel-item">{{ avatar(par, 40) }}<div><div class="fw-semibold">{{ nama(par) }}</div><div class="r">{{ role|capitalize }} kandung</div></div></a>
+              {% elif can_edit(p) %}
+              {% for g in tebakan.get(role, []) %}{% set gp = fam.get(g) %}
+              <form method="post" action="{{ url_for('anggota_set_ortu', pid=p.id) }}" class="guess mb-1">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="peran" value="{{ role }}"><input type="hidden" name="ortu_id" value="{{ g }}">
+                {{ avatar(gp, 40) }}
+                <div class="flex-grow-1 min-w-0"><div class="r">Mungkin {{ role }}nya?</div><div class="fw-semibold text-truncate">{{ gp.nama }}</div>
+                  {% set gi = tebakan.get(role ~ '_info', {}).get(g) %}
+                  <div class="r">{{ ('Mantan istri' if role == 'ibu' else 'Mantan suami') if gi and gi.m.status == 'cerai' else ('Istri' if role == 'ibu' else 'Suami') }}{% if gi and gi.m.ke and tebakan.get(role)|length > 1 %} ke-{{ gi.m.ke }}{% endif %} dari {{ (ayah if role == 'ibu' else ibu).nama }}{% if gi and gi.cocok %} · <b>menikah saat {{ p.nama.split()[0] }} lahir</b>{% endif %}</div></div>
+                <button class="btn btn-primary btn-sm text-nowrap"><i class="bi bi-check2"></i> Ya, benar</button>
+              </form>
+              {% endfor %}
+              <a href="{{ url_for('anggota_tambah', anak=p.id, peran=role) }}" class="rel-empty mb-1"><i class="bi bi-plus-circle"></i> {{ 'Bukan, tambahkan ' ~ role ~ ' lain' if tebakan.get(role) else 'Tambahkan ' ~ role }}</a>
+              {% else %}
+              <div class="rel-empty mb-1"><i class="bi bi-question-circle"></i> Data {{ role }} belum ada</div>
+              {% endif %}
+            {% endfor %}
+            {% if ayah and ibu %}{% set mo = fam.marriage(ayah.id, ibu.id) %}
+              {% if mo and mo.status == 'cerai' %}<div class="r px-2 mt-1"><i class="bi bi-info-circle"></i> Ayah dan ibu telah berpisah.</div>{% endif %}
+            {% endif %}
+            {% for st in fam.step_parents(p.id) %}{% set sp = fam.get(st.id) %}
+              <a href="{{ url_for('anggota_detail', pid=sp.id) }}" class="rel-item">{{ avatar(sp, 40) }}<div><div class="fw-semibold">{{ nama(sp) }}</div>
+                <div class="r">{{ {'L':'Ayah','P':'Ibu'}.get(sp.jenis_kelamin, 'Orang tua') }} sambung · pasangan {{ fam.get(st.via).nama.split()[0] }}</div></div></a>
+            {% endfor %}
+          </div>
+          <div class="col-md-6 rel-group" id="nikah">
+            <h6>Pernikahan</h6>
+            {% set marr = fam.marriages(p.id) %}
+            {% for m in marr %}{% set sp = fam.get(m.spouse) %}
+              {% set peran_sp = {'L':'Suami','P':'Istri'}.get(sp.jenis_kelamin, 'Pasangan') %}
+              <div class="marriage {{ m.status }}">
+                <a href="{{ url_for('anggota_detail', pid=sp.id) }}" class="rel-item p-0">{{ avatar(sp, 40) }}
+                  <div class="min-w-0"><div class="fw-semibold">{{ nama(sp) }}</div>
+                    <div class="r">{{ ('Mantan ' ~ peran_sp|lower) if m.status == 'cerai' else peran_sp }}{% if marr|length > 1 %} ke-{{ m.ke }}{% endif %}</div></div></a>
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                  <span class="chip {{ 'chip-mint' if m.status == 'menikah' else '' }}"><i class="bi bi-{{ 'heart-fill' if m.status == 'menikah' else 'heartbreak' if m.status == 'cerai' else 'flower1' }}"></i>{{ m.status_label }}</span>
+                  {% if m.tanggal_nikah %}<span class="chip">Menikah {{ m.tanggal_nikah|tgl }}</span>{% endif %}
+                  {% if m.tanggal_selesai %}<span class="chip">Berakhir {{ m.tanggal_selesai|tgl }}</span>{% endif %}
+                </div>
+                {% if m.children %}<div class="r mt-2">Anak: {% for c in m.children %}<a href="{{ url_for('anggota_detail', pid=c) }}">{{ fam.get(c).nama.split()[0] }}</a>{{ ', ' if not loop.last }}{% endfor %}</div>{% endif %}
+                {% if can_edit(p) %}
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                  {% if p.jenis_kelamin and sp.jenis_kelamin %}
+                  <a class="small fw-semibold" href="{{ url_for('anggota_tambah', ayah=p.id if p.jenis_kelamin == 'L' else sp.id, ibu=sp.id if p.jenis_kelamin == 'L' else p.id) }}"><i class="bi bi-plus-circle"></i> Anak dari pernikahan ini</a>
+                  {% endif %}
+                  <a class="small fw-semibold" data-bs-toggle="collapse" href="#ubahNikah{{ sp.id }}"><i class="bi bi-pencil"></i> Ubah status</a>
+                </div>
+                <div class="collapse mt-2" id="ubahNikah{{ sp.id }}">
+                  <form method="post" action="{{ url_for('nikah_ubah', a=p.id, b=sp.id) }}" class="nikah-form">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="kembali" value="{{ p.id }}">
+                    <select name="status" class="form-select form-select-sm" data-status>
+                      {% for k, lbl in [('menikah','Masih menikah'),('cerai','Bercerai'),('wafat','Berpisah karena wafat')] %}<option value="{{ k }}" {{ 'selected' if m.status == k }}>{{ lbl }}</option>{% endfor %}
+                    </select>
+                    <div class="row g-2 mt-0">
+                      <div class="col-6"><label class="form-hint">Tanggal menikah</label><input type="date" name="tanggal_nikah" value="{{ m.tanggal_nikah or '' }}" class="form-control form-control-sm"></div>
+                      <div class="col-6" data-selesai><label class="form-hint">Tanggal berakhir</label><input type="date" name="tanggal_selesai" value="{{ m.tanggal_selesai or '' }}" class="form-control form-control-sm"></div>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                      <button class="btn btn-primary btn-sm">Simpan</button>
+                      {% if not m.children %}<button class="btn btn-ghost btn-sm text-danger" formaction="{{ url_for('nikah_hapus', a=p.id, b=sp.id) }}" onclick="return confirm('Hapus catatan pernikahan ini?')">Hapus</button>{% endif %}
+                    </div>
+                  </form>
+                </div>
+                {% endif %}
+              </div>
+            {% else %}
+              <div class="ft-muted small px-2 mb-2">Belum tercatat.</div>
+            {% endfor %}
+            {% if can_edit(p) %}
+            <a class="rel-empty mt-1" data-bs-toggle="collapse" href="#tambahNikah"><i class="bi bi-plus-circle"></i> Tambah {{ 'istri' if p.jenis_kelamin == 'L' else 'suami' if p.jenis_kelamin == 'P' else 'pasangan' }}{{ ' / pernikahan lain' if marr }}</a>
+            <div class="collapse mt-2" id="tambahNikah">
+              <form method="post" action="{{ url_for('nikah_tambah', pid=p.id) }}" class="nikah-form" id="formNikahBaru">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <input type="hidden" name="lanjut" value="">
+                <input type="hidden" name="jenis_kelamin" value="{{ p.jenis_kelamin or '' }}">
+                {{ picker('pasangan', '', 'P' if p.jenis_kelamin == 'L' else 'L' if p.jenis_kelamin == 'P' else '', fam=fam, exclude=p.id, predict=true) }}
+                <select name="status" class="form-select form-select-sm mt-2" data-status>
+                  <option value="menikah">Masih menikah</option><option value="cerai">Bercerai</option><option value="wafat">Berpisah karena wafat</option>
+                </select>
+                <div class="row g-2 mt-0">
+                  <div class="col-6"><label class="form-hint">Tanggal menikah</label><input type="date" name="tanggal_nikah" class="form-control form-control-sm"></div>
+                  <div class="col-6" data-selesai><label class="form-hint">Tanggal berakhir</label><input type="date" name="tanggal_selesai" class="form-control form-control-sm"></div>
+                </div>
+                <button class="btn btn-primary btn-sm mt-2">Simpan pernikahan</button>
+              </form>
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-md-6 rel-group">
+            <h6>Saudara</h6>
+            {% for s, kind in fam.siblings(p.id) %}{% set sb = fam.get(s) %}
+              <a href="{{ url_for('anggota_detail', pid=s) }}" class="rel-item">{{ avatar(sb, 40) }}<div><div class="fw-semibold">{{ nama(sb) }}</div><div class="r">Saudara {{ kind }}{% set older = fam.is_older(s, p.id) %}{% if older is not none %} · {{ 'kakak' if older else 'adik' }}{% endif %}</div></div></a>
+            {% else %}
+              <div class="ft-muted small px-2">Belum tercatat.</div>
+            {% endfor %}
+          </div>
+          <div class="col-md-6 rel-group">
+            <h6>Anak</h6>
+            {% for c in fam.children(p.id) %}{% set ch = fam.get(c) %}
+              <a href="{{ url_for('anggota_detail', pid=c) }}" class="rel-item">{{ avatar(ch, 40) }}<div><div class="fw-semibold">{{ nama(ch) }}</div><div class="r">Anak ke-{{ loop.index }}{% if lahir(ch) %} · {{ lahir(ch) }}{% endif %}</div></div></a>
+            {% endfor %}
+            {% if p.jenis_kelamin %}
+            {% set aktif = fam.active_spouses(p.id) %}{% set semua = fam.spouses(p.id) %}
+            {% set sp1 = aktif[0] if aktif|length == 1 else (semua[0] if semua|length == 1 else None) %}
+            <a href="{{ url_for('anggota_tambah', **{('ayah' if p.jenis_kelamin == 'L' else 'ibu'): p.id}) }}{% if sp1 %}&{{ 'ibu' if p.jenis_kelamin == 'L' else 'ayah' }}={{ sp1 }}{% endif %}" class="rel-empty mt-1" data-tambah-anak><i class="bi bi-plus-circle"></i> Tambahkan anak{% if sp1 %} <span class="ft-muted">dengan {{ panggilan(fam.get(sp1).nama) }}</span>{% endif %}</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 d-flex flex-column gap-4">
+      <div class="ft-card p-4 fade-up d1">
+        <h5 class="mb-2">Tentang</h5>
+        <div class="info-row"><i class="bi bi-briefcase"></i><div><div class="k">Pekerjaan</div>{{ p.pekerjaan or '—' }}</div></div>
+        {% if p.wafat %}
+        <div class="info-row"><i class="bi bi-flower1"></i><div><div class="k">Berpulang</div>{{ wi.tanggal if wi and wi.tanggal else '—' }}</div></div>
+        <div class="info-row"><i class="bi bi-geo-alt"></i><div class="flex-grow-1"><div class="k">Tempat peristirahatan</div>{{ p.makam or '—' }}</div>
+          {% if p.makam %}<a href="https://www.google.com/maps/search/?api=1&query={{ p.makam|urlencode }}" target="_blank" rel="noopener" class="btn btn-soft btn-sm align-self-center">Peta</a>{% endif %}</div>
+        {% endif %}
+        {% if can_see_contact(p) %}
+          {% if not p.wafat %}
+          <div class="info-row"><i class="bi bi-whatsapp"></i><div class="flex-grow-1"><div class="k">WhatsApp</div>
+            {% if p.wa %}<a href="{{ wa_link(p.wa) }}" target="_blank" rel="noopener">{{ p.wa }}</a>{% else %}—{% endif %}</div>
+            {% if p.wa %}<a href="{{ wa_link(p.wa) }}" target="_blank" rel="noopener" class="btn btn-soft btn-sm align-self-center">Sapa</a>{% endif %}</div>
+          {% endif %}
+          <div class="info-row"><i class="bi bi-geo-alt"></i><div><div class="k">Alamat</div><span style="white-space:pre-line">{{ p.alamat or '—' }}</span></div></div>
+          {% if not p.tampil_kontak %}<div class="small ft-muted mt-2"><i class="bi bi-eye-slash"></i> Kontak disembunyikan dari anggota lain.</div>{% endif %}
+        {% else %}
+          <div class="info-row"><i class="bi bi-shield-lock"></i><div class="small ft-muted">Kontak & alamat dirahasiakan oleh pemiliknya.</div></div>
+        {% endif %}
+      </div>
+
+      {% if can_edit(p) and pct < 100 %}
+      <div class="ft-card p-4 fade-up d2">
+        <div class="d-flex justify-content-between small fw-semibold mb-2"><span>Kelengkapan data</span><span>{{ pct }}%</span></div>
+        <div class="ft-progress mb-3"><div style="width:{{ pct }}%"></div></div>
+        <div class="small ft-muted">Bisa dilengkapi: {{ missing|join(', ')|lower }}.</div>
+      </div>
+      {% endif %}
+
+      {% if tautan or (pintu and not is_tamu()) or (me.is_admin and not is_tamu()) %}
+      <div class="ft-card p-4 fade-up d2 tautan-card" id="tautan">
+        <h6 class="fw-bold mb-1"><i class="bi bi-link-45deg me-1"></i>Tersambung ke silsilah lain</h6>
+        <p class="small ft-muted mb-3">Orang yang sama juga tercatat di silsilah keluarga lain (server berbeda), sesuai kesepakatan para admin.</p>
+        {% for t in tautan %}
+        <div class="tautan-item">
+          <div class="min-w-0"><div class="fw-semibold">{{ t.label }}</div>{% if t.catatan %}<div class="small ft-muted">{{ t.catatan }}</div>{% endif %}
+            <div class="small ft-muted text-truncate">{{ t.url.split('/')[2] if '//' in t.url else t.url }}</div></div>
+          <a href="{{ t.url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm text-nowrap">Jelajahi <i class="bi bi-box-arrow-up-right"></i></a>
+          {% if me.is_admin and not is_tamu() %}<form method="post" action="{{ url_for('tautan_hapus', tid=t.id) }}" data-confirm="Hapus tautan ini?"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm px-2 text-danger" title="Hapus"><i class="bi bi-trash3"></i></button></form>{% endif %}
+        </div>
+        {% endfor %}
+        {% for a in (pintu if not is_tamu() else []) %}
+        <div class="tautan-item pintu">
+          <div class="min-w-0"><div class="fw-semibold">{{ a.asal or a.nama }}</div>
+            <div class="small ft-muted">{{ panggilan(p.nama) }} juga tercatat di silsilah ini — kerabat dari sana menjelajah ke sini sebagai tamu.</div>
+            {% if not a.link_asal %}<div class="small ft-muted"><i class="bi bi-hourglass-split"></i> Link ke silsilah tersebut belum dipasang admin.</div>{% endif %}</div>
+          {% if a.link_asal %}<a href="{{ a.link_asal }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm text-nowrap">Jelajahi <i class="bi bi-box-arrow-up-right"></i></a>
+          {% elif me.is_admin %}<a href="{{ url_for('admin_tamu') }}#akses{{ a.id }}" class="btn btn-soft btn-sm text-nowrap">Pasang link</a>{% endif %}
+        </div>
+        {% endfor %}
+        {% if me.is_admin and not is_tamu() %}
+        <a class="small fw-semibold" data-bs-toggle="collapse" href="#formTautan"><i class="bi bi-plus-circle"></i> Tambah tautan</a>
+        <form method="post" action="{{ url_for('tautan_tambah', pid=p.id) }}" class="collapse nikah-form mt-2" id="formTautan">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input name="label" class="form-control form-control-sm mb-2" required maxlength="120" placeholder="Nama silsilah, mis. Keluarga Besar B">
+          <input name="url" type="url" inputmode="url" class="form-control form-control-sm mb-2" required placeholder="Link tamu dari admin server tersebut (https://…)">
+          <input name="catatan" class="form-control form-control-sm mb-2" maxlength="300" placeholder="Catatan (opsional), mis. disepakati admin A & B">
+          <button class="btn btn-primary btn-sm">Simpan tautan</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if not is_tamu() %}
+      {% set hk = hak_info(p) %}
+      <div class="ft-card p-4 fade-up d2">
+        <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-1" style="color:var(--ft-primary)"></i>Hak kelola data</h6>
+        <div class="info-row"><i class="bi bi-person-badge"></i><div><div class="k">Dikelola oleh</div>
+          {% if hk.manager %}<b>{{ hk.manager.nama }}</b>{% if hk.manager_rel %} <span class="ft-muted">· {{ hk.manager_rel }}</span>{% endif %}
+          {% else %}<span class="ft-muted">Terbuka — belum ada pengelola</span>{% endif %}</div></div>
+        <div class="info-row"><i class="bi bi-person-gear"></i><div><div class="k">Peran Anda</div>
+          {% if hk.admin %}<span class="chip chip-primary">Admin</span> <span class="small ft-muted">semua data</span>
+          {% else %}<span class="chip peran-{{ me_peran }}">{{ hk.peran }}</span>
+            {% if hk.in_scope %}<span class="small" style="color:var(--ft-mint)"><i class="bi bi-check-circle"></i> dalam jangkauan</span>
+            {% else %}<span class="small ft-muted"><i class="bi bi-dash-circle"></i> di luar jangkauan</span>{% endif %}{% endif %}
+        </div></div>
+        <div class="info-row"><i class="bi bi-diagram-2"></i><div><div class="k">Kedekatan Anda</div>
+          <span class="chip tier-{{ hk.tier }}">{{ hk.label }}</span>
+          <div class="small ft-muted mt-1">
+            {% if hk.edit %}Anda bisa mengubah data ini secara langsung.
+            {% elif hk.owner %}Data milik akun — perubahan dari kerabat dikirim sebagai usulan ke pemiliknya.
+            {% elif not hk.in_scope %}Orang ini di luar jangkauan peran {{ hk.peran }} Anda, jadi perubahan dikirim sebagai usulan.
+            {% else %}Pengelola lebih dekat ({{ hk.lock_label|lower }}), jadi perubahan dari Anda dikirim sebagai usulan.{% endif %}
+          </div></div></div>
+        <div class="small ft-muted mt-2"><i class="bi bi-info-circle"></i> Hak ubah = sesuai jangkauan peran, lalu diprioritaskan kerabat terdekat: pemilik data → orang tua, anak & keturunan, saudara kandung, pasangan → kerabat dekat → kerabat jauh.</div>
+      </div>
+
+      {% endif %}
+      {% if riwayat and not is_tamu() %}
+      <div class="ft-card p-4 fade-up d3">
+        <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-1" style="color:var(--ft-primary)"></i>Riwayat perubahan</h6>
+        <div class="timeline">
+          {% for r in riwayat %}
+          <div class="tl-item">
+            <div class="small"><b>{{ r.oleh or 'Sistem' }}</b> <span class="ft-muted">· {{ r.waktu|tgl }}</span></div>
+            {% if r.catatan %}<div class="small ft-muted">{{ r.catatan }}</div>{% endif %}
+            <ul class="small mb-0 ps-3">{% for x in loads(r.ringkasan)[:5] %}<li>{{ x }}</li>{% endfor %}{% if loads(r.ringkasan)|length > 5 %}<li class="ft-muted">dan {{ loads(r.ringkasan)|length - 5 }} lainnya</li>{% endif %}</ul>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% if ui and ui.boleh and not p.wafat %}{{ modal_ucapan(STIKER) }}{% endif %}
+{% endblock %}

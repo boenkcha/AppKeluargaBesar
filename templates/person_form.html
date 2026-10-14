@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, picker with context %}
+{% set judul = 'Profil Saya' if is_profile else (('Usulkan perubahan: ' if usul else 'Ubah data ') ~ person.nama if person else 'Tambah anggota keluarga') %}
+{% block title %}{{ judul }}{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:880px">
+  <div class="mb-4 fade-up">
+    <a href="{{ url_for('anggota_detail', pid=person.id) if person else (url_for('anggota_detail', pid=anak.id) if anak else url_for('beranda')) }}" class="small ft-muted"><i class="bi bi-arrow-left"></i> Kembali</a>
+    <h2 class="mt-2 mb-1">{{ judul }}</h2>
+    {% if usul %}{% set hk = hak_info(person) %}
+    <div class="usul-banner mt-2">
+      <i class="bi bi-send-check fs-4"></i>
+      <div><b>Perubahan Anda akan dikirim sebagai usulan.</b><br>
+        Data ini dikelola oleh <b>{{ hk.manager.nama if hk.manager else 'admin keluarga' }}</b>{% if hk.manager_rel %} ({{ hk.manager_rel }}){% endif %} — kerabat yang lebih dekat dengan {{ panggilan(person.nama) }}.
+        Usulan akan diterapkan setelah disetujui. Posisi Anda: <b>{{ hk.label }}</b>.</div>
+    </div>
+    {% elif is_profile %}
+    <p class="ft-muted mb-0">Isi yang Anda tahu saja dulu — semua bisa dilengkapi kapan pun. Tidak ada yang wajib selain nama.</p>
+    {% elif anak %}
+    <p class="ft-muted mb-0">Menambahkan <b>{{ peran }}</b> dari <b>{{ anak.nama }}</b>. Terima kasih sudah membantu melengkapi jejak keluarga 🙏</p>
+    {% else %}
+    <p class="ft-muted mb-0">Bisa untuk anggota yang masih ada maupun yang sudah berpulang. Kenangan mereka layak dicatat.</p>
+    {% endif %}
+  </div>
+
+  {% if calon and not saran %}
+  <div class="ft-card p-4 mb-4 fade-up" style="border-color:var(--ft-primary)">
+    <h5 class="mb-1"><i class="bi bi-search-heart me-2" style="color:var(--ft-primary)"></i>Mungkin Anda sudah dicatat oleh keluarga?</h5>
+    <p class="ft-muted small mb-3">Kami menemukan nama yang mirip. Jika salah satunya adalah Anda, tautkan saja — tidak perlu mengisi dari awal.</p>
+    <div class="row g-2">
+      {% for item in calon %}{% set c = fam.get(item.id) %}
+      <div class="col-md-6">
+        <div class="rel-item" style="background:var(--ft-surface-2)">
+          {{ avatar(c, 42) }}
+          <div class="flex-grow-1 min-w-0"><div class="fw-semibold text-truncate">{{ c.nama }}</div>
+            <div class="r">{{ ringkas(c.id) or 'Dicatat oleh keluarga' }}</div>
+            {% for r in item.reasons[1:] %}<span class="chip chip-mint mt-1">{{ r }}</span> {% endfor %}</div>
+          <form method="post" action="{{ url_for('profil_klaim', pid=c.id) }}" data-confirm="Tautkan data {{ c.nama }} sebagai diri Anda?">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm">Ini saya</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="d-flex flex-column gap-4">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {% if v.foto_tmp %}<input type="hidden" name="foto_tmp" value="{{ v.foto_tmp }}">{% endif %}
+
+    {% if saran %}
+    <div class="ft-card saran-card p-4 fade-up">
+      <div class="d-flex gap-3 mb-3">
+        <div class="feature-icon sky flex-shrink-0"><i class="bi bi-search-heart"></i></div>
+        <div>
+          <h5 class="mb-1">Sebentar — sepertinya sebagian sudah tercatat</h5>
+          <p class="ft-muted small mb-0">Sistem menemukan data yang mirip dengan membaca nama dan hubungan keluarga yang sudah ada. Pilih yang sesuai agar semua cabang tersambung dan tidak ada data ganda.</p>
+        </div>
+      </div>
+      {% for key, cands in saran.items() %}
+      {% set typed = v.nama if key == 'diri' else v.get(key ~ '_nama') %}
+      <div class="saran-group">
+        <h6>
+          {% if key == 'diri' and is_profile %}Apakah ini Anda?
+          {% elif key == 'diri' %}Apakah “{{ typed }}” sudah ada di silsilah?
+          {% else %}{{ {'ayah':'Ayah','ibu':'Ibu','pasangan':'Suami / istri'}[key] }}: “{{ typed }}”, maksudnya…{% endif %}
+        </h6>
+        {% for c in cands %}{% set cp = fam.get(c.id) %}
+        <label class="saran-opt">
+          <input type="radio" name="pilih_{{ key }}" value="{{ c.id }}" required {{ 'checked' if loop.first and c.score >= 0.9 }}>
+          {{ avatar(cp, 44, false) }}
+          <span class="flex-grow-1 min-w-0">
+            <span class="d-flex align-items-center gap-2 flex-wrap"><b>{{ cp.nama }}</b>
+              <span class="chip {{ 'chip-mint' if c.score >= 0.9 else 'chip-accent' }}">{{ 'Sangat mungkin' if c.score >= 0.9 else 'Mungkin' }} · {{ (c.score * 100)|round|int }}%</span></span>
+            <span class="d-block small ft-muted">{{ ringkas(cp.id) or 'Belum ada data keluarga' }}</span>
+            {% for r in c.reasons %}<span class="chip mt-1 me-1"><i class="bi bi-check2"></i>{{ r }}</span>{% endfor %}
+          </span>
+        </label>
+        {% endfor %}
+        <label class="saran-opt baru">
+          <input type="radio" name="pilih_{{ key }}" value="baru" required>
+          <span class="avatar" style="--s:44px;--h:160"><i class="bi bi-plus-lg"></i></span>
+          <span>{% if key == 'diri' and is_profile %}Bukan saya — buat profil baru{% else %}Bukan, catat “{{ typed }}” sebagai orang baru{% endif %}</span>
+        </label>
+      </div>
+      {% endfor %}
+      <button class="btn btn-primary mt-2"><i class="bi bi-check2 me-1"></i>Lanjutkan & simpan</button>
+    </div>
+    {% endif %}
+
+    <div class="ft-card form-section fade-up d1">
+      <div class="row g-4 align-items-center">
+        <div class="col-md-4 text-center">
+          {% if usul %}
+          <div class="photo-drop" style="cursor:default">{% if v.foto %}<img src="{{ url_for('foto', name=v.foto) }}" alt="">{% else %}<i class="bi bi-person fs-1"></i>{% endif %}</div>
+          <div class="form-hint mt-2">Foto hanya bisa diganti oleh pengelola data.</div>
+          {% else %}
+          <div class="photo-drop" id="photoDrop" title="Pilih foto">
+            {% if v.foto %}<img src="{{ url_for('foto', name=v.foto) }}" alt="">{% endif %}
+            <div class="text-center"><i class="bi bi-camera fs-2"></i><div class="small fw-semibold">Pilih foto</div></div>
+            {% if v.foto %}<span class="cam"><i class="bi bi-camera"></i> Ganti</span>{% endif %}
+          </div>
+          <input type="file" name="foto" id="fotoInput" accept="image/*" class="d-none">
+          <button type="button" class="btn btn-soft btn-sm mt-2 {{ '' if v.foto else 'd-none' }}" id="aturFoto" data-src="{{ url_for('foto', name=v.foto) if v.foto else '' }}"><i class="bi bi-arrows-move me-1"></i>Atur posisi</button>
+          <div class="form-hint mt-2" id="fotoHint">Setelah memilih foto, Anda bisa menggeser & memperbesar bagian yang ditampilkan.</div>
+          {% if v.foto %}
+          <div class="form-check d-inline-block mt-1"><input class="form-check-input" type="checkbox" name="hapus_foto" id="hapusFoto" value="1"><label class="form-check-label small" for="hapusFoto">Hapus foto</label></div>
+          {% endif %}
+          {% endif %}
+        </div>
+        <div class="col-md-8">
+          <h5><i class="bi bi-person-vcard"></i>Identitas</h5>
+          <div class="mb-3 mt-3">
+            <label class="form-label">Nama lengkap <span class="text-danger">*</span></label>
+            <input name="nama" class="form-control" value="{{ v.nama or '' }}" required autocapitalize="words" autocomplete="{{ 'name' if is_profile else 'off' }}" enterkeyhint="next" placeholder="Contoh: Siti Aminah">
+          </div>
+          <div class="row g-3">
+            <div class="col-sm-7">
+              <label class="form-label">Jenis kelamin</label>
+              <div class="row g-2 jk-toggle">
+                <div class="col-6"><input type="radio" class="btn-check" name="jenis_kelamin" id="jkL" value="L" {{ 'checked' if v.jenis_kelamin == 'L' }}><label for="jkL"><i class="bi bi-gender-male me-1"></i>Laki-laki</label></div>
+                <div class="col-6"><input type="radio" class="btn-check" name="jenis_kelamin" id="jkP" value="P" {{ 'checked' if v.jenis_kelamin == 'P' }}><label for="jkP"><i class="bi bi-gender-female me-1"></i>Perempuan</label></div>
+              </div>
+            </div>
+            <div class="col-sm-5">
+              <label class="form-label">Tanggal lahir</label>
+              <input name="tanggal_lahir" type="date" min="1000-01-01" max="{{ hari_ini }}" class="form-control" value="{{ v.tanggal_lahir or '' }}">
+              <div class="form-hint"><a href="javascript:void(0)" data-toggle-tahun>Tidak tahu tanggalnya? Isi tahunnya saja</a></div>
+              <div id="tahunBox" class="mt-2 {{ '' if (v.tahun_lahir and not v.tanggal_lahir) else 'd-none' }}">
+                <input name="tahun_lahir" type="number" inputmode="numeric" min="1000" max="{{ tahun_ini }}" class="form-control" value="{{ v.tahun_lahir if not v.tanggal_lahir else '' }}" placeholder="Perkiraan tahun, mis. 1965">
+              </div>
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <label class="form-hint m-0 text-nowrap" for="urutanLahir">Anak ke-</label>
+                <input name="urutan_lahir" id="urutanLahir" type="number" inputmode="numeric" min="1" max="30" class="form-control form-control-sm" style="max-width:84px" value="{{ v.urutan_lahir or '' }}" placeholder="1">
+              </div>
+              <div class="form-hint">Untuk mengurutkan kakak-adik bila tanggal lahir belum diketahui.</div>
+            </div>
+          </div>
+          {% if not is_profile %}
+          <div class="form-check form-switch mt-3">
+            <input class="form-check-input" type="checkbox" role="switch" name="wafat" id="wafat" value="1" {{ 'checked' if v.wafat }}>
+            <label class="form-check-label" for="wafat">Telah berpulang <span class="ft-muted small">— semoga mendapat tempat terbaik</span></label>
+          </div>
+          <div class="row g-2 mt-1 wafat-box" data-show-wafat>
+            <div class="col-sm-5"><label class="form-label">Tanggal berpulang</label>
+              <input name="tanggal_wafat" type="date" max="{{ hari_ini }}" class="form-control" value="{{ v.tanggal_wafat or '' }}">
+              <div class="form-hint"><a href="javascript:void(0)" data-toggle-twafat>Hanya tahu tahunnya?</a></div>
+              <input name="tahun_wafat" type="number" inputmode="numeric" min="1000" max="{{ tahun_ini }}" class="form-control mt-2 {{ '' if (v.tahun_wafat and not v.tanggal_wafat) else 'd-none' }}" id="tahunWafat" value="{{ v.tahun_wafat if not v.tanggal_wafat else '' }}" placeholder="mis. 2015"></div>
+            <div class="col-sm-7"><label class="form-label">Tempat peristirahatan</label>
+              <input name="makam" class="form-control" maxlength="200" autocapitalize="words" value="{{ v.makam or '' }}" placeholder="mis. TPU Karet Bivak, Jakarta"></div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="ft-card form-section fade-up d2">
+      <h5><i class="bi bi-diagram-2"></i>Orang tua & pasangan</h5>
+      <p class="form-hint mb-3 mt-0">Cari nama yang sudah ada di silsilah, atau ketik nama baru. Belum tahu? Kosongkan saja — kerabat lain bisa membantu melengkapi.</p>
+      <div class="row g-3">
+        <div class="col-md-6">{{ picker('ayah', 'Ayah', 'L', id_val=v.ayah_id, nama_val=v.ayah_nama, fam=fam, exclude=person.id if person else '', predict=true) }}</div>
+        <div class="col-md-6">{{ picker('ibu', 'Ibu', 'P', id_val=v.ibu_id, nama_val=v.ibu_nama, fam=fam, exclude=person.id if person else '', predict=true) }}</div>
+        {% set marr = fam.marriages(person.id) if person else [] %}
+        <div class="col-md-6">
+          {% if marr %}
+          <label class="form-label">Riwayat pernikahan</label>
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            {% for m in marr %}<span class="chip {{ 'chip-mint' if m.status == 'menikah' else '' }}"><i class="bi bi-{{ 'heart-fill' if m.status == 'menikah' else 'heartbreak' if m.status == 'cerai' else 'flower1' }}"></i>{{ fam.get(m.spouse).nama }} · {{ m.status_label|lower }}</span>{% endfor %}
+          </div>
+          {% endif %}
+          {{ picker('pasangan', 'Tambah suami / istri' if marr else 'Suami / Istri', '', id_val=v.pasangan_id, nama_val=v.pasangan_nama, fam=fam, exclude=person.id if person else '',
+                    hint=('Status cerai, tanggal menikah, dan pernikahan lain diatur di halaman profil.' if marr else 'Opsional. Ayah & ibu otomatis dicatat sebagai pasangan.'), predict=true) }}
+        </div>
+        {% if person and person.jenis_kelamin %}
+        {% set slot = 'ibu_id' if person.jenis_kelamin == 'L' else 'ayah_id' %}
+        {% set yatim = [] %}{% for c in fam.children(person.id) %}{% if not fam.get(c)[slot] %}{% set _ = yatim.append(c) %}{% endif %}{% endfor %}
+        {% if yatim %}
+        <div class="col-12" id="anakBersama">
+          <div class="p-3 rounded-4" style="background:var(--ft-mint-soft)">
+            <div class="small fw-semibold mb-2"><i class="bi bi-diagram-2"></i> Jadikan {{ 'istri' if person.jenis_kelamin == 'L' else 'suami' }} di atas juga {{ 'ibu' if person.jenis_kelamin == 'L' else 'ayah' }} dari:</div>
+            <div class="d-flex flex-wrap gap-3">
+              {% for c in yatim %}
+              <div class="form-check m-0"><input class="form-check-input" type="checkbox" name="anak_bersama" value="{{ c }}" id="ab{{ c }}" {{ 'checked' if not fam.spouses(person.id) }}>
+                <label class="form-check-label small" for="ab{{ c }}">{{ fam.get(c).nama }}</label></div>
+              {% endfor %}
+            </div>
+            <div class="form-hint">{% if fam.spouses(person.id) %}Karena sudah ada pernikahan lain, centang hanya anak dari pasangan ini.{% else %}Lepas centang bila {{ 'ibunya' if person.jenis_kelamin == 'L' else 'ayahnya' }} orang lain.{% endif %}</div>
+          </div>
+        </div>
+        {% endif %}{% endif %}
+        {% if person %}{% set kids = fam.children(person.id) %}{% set sibs = fam.siblings(person.id) %}
+        {% if kids or sibs %}
+        <div class="col-md-6">
+          <label class="form-label">Sudah terhubung dengan</label>
+          <div class="d-flex flex-wrap gap-1">
+            {% for c in kids %}<span class="chip chip-primary"><i class="bi bi-person-heart"></i>Anak: {{ fam.get(c).nama }}</span>{% endfor %}
+            {% for s, kind in sibs %}<span class="chip chip-sky"><i class="bi bi-people"></i>Saudara: {{ fam.get(s).nama }}</span>{% endfor %}
+          </div>
+        </div>
+        {% endif %}{% endif %}
+      </div>
+    </div>
+
+    <div class="ft-card form-section fade-up d3">
+      <h5><i class="bi bi-geo-alt"></i>Kontak & keseharian</h5>
+      <div class="row g-3 mt-1">
+        <div class="col-md-6">
+          <label class="form-label">Pekerjaan</label>
+          <div class="input-icon"><i class="bi bi-briefcase"></i><input name="pekerjaan" class="form-control" autocapitalize="words" enterkeyhint="next" value="{{ v.pekerjaan or '' }}" placeholder="mis. Guru, Wiraswasta, Ibu rumah tangga"></div>
+        </div>
+        <div class="col-md-6" data-hide-wafat>
+          <label class="form-label">Nomor WhatsApp</label>
+          <div class="input-icon"><i class="bi bi-whatsapp"></i><input name="wa" type="tel" inputmode="tel" autocomplete="{{ 'tel' if is_profile else 'off' }}" enterkeyhint="next" class="form-control" value="{{ v.wa or '' }}" placeholder="08xxxxxxxxxx"></div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Alamat / domisili</label>
+          <textarea name="alamat" rows="2" autocomplete="{{ 'street-address' if is_profile else 'off' }}" autocapitalize="sentences" class="form-control" placeholder="Kota atau alamat lengkap — sesuai kenyamanan Anda">{{ v.alamat or '' }}</textarea>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Cerita singkat <span class="ft-muted fw-normal">(opsional)</span></label>
+          <textarea name="bio" rows="3" class="form-control" maxlength="1000" placeholder="Kenangan, kebiasaan, pesan untuk anak-cucu, atau asal kampung halaman…">{{ v.bio or '' }}</textarea>
+        </div>
+        <div class="col-12">
+          <div class="d-flex gap-3 align-items-start p-3 rounded-4" style="background:var(--ft-surface-2)">
+            <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" name="tampil_kontak" id="tampilKontak" value="1" {{ 'checked' if v.tampil_kontak }}></div>
+            <label for="tampilKontak" class="small"><b>Tampilkan alamat & WA ke anggota keluarga terverifikasi</b><br><span class="ft-muted">Matikan jika ingin dirahasiakan — hanya Anda dan admin yang bisa melihatnya. Data tidak pernah tampil untuk publik.</span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center form-actions">
+      {% if person and can_delete(person) and not is_profile and not usul %}
+      <button form="hapusForm" class="btn btn-ghost text-danger" title="Hapus data"><i class="bi bi-trash3"></i><span class="d-none d-md-inline ms-1">Hapus data</span></button>
+      {% else %}<span></span>{% endif %}
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('anggota_detail', pid=person.id) if person else url_for('beranda') }}" class="btn btn-ghost">Batal</a>
+        {% if usul %}<button class="btn btn-primary px-4"><i class="bi bi-send me-1"></i>Kirim usulan</button>
+        {% else %}<button class="btn btn-primary px-4"><i class="bi bi-check2 me-1"></i>Simpan</button>{% endif %}
+      </div>
+    </div>
+  </form>
+  {% if person and can_delete(person) and not is_profile %}
+  <form id="hapusForm" method="post" action="{{ url_for('anggota_hapus', pid=person.id) }}" data-confirm="Hapus data {{ person.nama }}? Relasi ke anak-anaknya akan dikosongkan. Tindakan ini tidak bisa dibatalkan.">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  </form>
+  {% endif %}
+</div>
+<div class="modal fade" id="cropModal" tabindex="-1" aria-labelledby="cropTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="cropTitle">Atur foto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="small ft-muted mb-3">Geser foto agar wajah pas di dalam lingkaran. Cubit dua jari, scroll, atau gunakan slider untuk memperbesar.</p>
+        <div class="crop-stage" id="cropStage">
+          <img id="cropImg" alt="" draggable="false">
+          <div class="crop-mask"></div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-3 mx-auto" style="max-width:320px">
+          <i class="bi bi-zoom-out ft-muted"></i>
+          <input type="range" class="form-range flex-grow-1" id="cropZoom" min="1" max="4" step="0.01" value="1" aria-label="Perbesar">
+          <i class="bi bi-zoom-in ft-muted"></i>
+          <button type="button" class="btn btn-ghost btn-sm px-2 ms-1" id="cropRotate" title="Putar 90°"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-primary px-4" id="cropOk"><i class="bi bi-check2 me-1"></i>Pakai foto ini</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

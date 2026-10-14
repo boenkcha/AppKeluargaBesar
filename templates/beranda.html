@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, nama with context %}
+{% from "_cerita.html" import ornamen, sampul_bg, pasangan_leluhur, statbar with context %}
+{% from "_ultah.html" import modal_ucapan, kejutan_layar with context %}
+{% block title %}Beranda{% endblock %}
+{% block content %}
+<div class="container py-4">
+  {% set pct, missing = completeness(my) %}
+  <div class="welcome mb-4 fade-up">
+    <div class="d-flex flex-wrap align-items-center gap-4 position-relative" style="z-index:1">
+      {% if my %}{{ avatar(my, 76) }}{% endif %}
+      <div class="flex-grow-1">
+        <div class="opacity-75 small fw-semibold">{{ sapaan() }},</div>
+        <h2 class="mb-1">{{ me.nama }} 👋</h2>
+        {% if not my %}
+        <p class="mb-3 opacity-75">Yuk mulai dengan mengenalkan diri Anda. Dari sinilah pohon keluarga tumbuh.</p>
+        <a href="{{ url_for('profil') }}" class="btn btn-primary">Lengkapi profil saya <i class="bi bi-arrow-right"></i></a>
+        {% elif pct < 100 %}
+        <p class="mb-2 opacity-75">Profil Anda sudah {{ pct }}% lengkap. Tinggal sedikit lagi: {{ missing[:3]|join(', ')|lower }}{{ '…' if missing|length > 3 }}.</p>
+        <a href="{{ url_for('profil') }}" class="btn btn-primary btn-sm">Lanjutkan melengkapi</a>
+        {% else %}
+        <p class="mb-0 opacity-75">Profil Anda lengkap — terima kasih sudah menjadi bagian penting dari cerita keluarga ini 🌿</p>
+        {% endif %}
+      </div>
+      {% if my %}<div class="progress-ring" style="--p:{{ pct }}"><span>{{ pct }}%</span></div>{% endif %}
+    </div>
+  </div>
+
+  {% if kejutan %}
+  <button type="button" class="kado-kartu mb-4 fade-up" data-kej-buka>
+    <span class="kado-emoji">🎁</span>
+    <span class="flex-grow-1 text-start"><b>Selamat ulang tahun ke-{{ kejutan.info.ke }}!</b><br>
+      <span>{% if kejutan.ucapan %}Ada {{ kejutan.ucapan|length }} ucapan dari keluarga untukmu{% if kejutan.belum %} · {{ kejutan.belum }} baru{% endif %}{% else %}Keluarga besar mendoakan yang terbaik untukmu{% endif %} — buka kejutanmu</span></span>
+    <i class="bi bi-chevron-right"></i>
+  </button>
+  {% endif %}
+  {% if cerita %}
+  <div class="k-home-wrap mb-4 fade-up">
+    {% if cerita|length > 1 or garis_belum %}
+    <div class="k-tabs" role="tablist">
+      {% for it in cerita %}
+      <button type="button" class="k-tab {{ 'active' if loop.first }}" data-ktab="{{ loop.index0 }}" role="tab">
+        <span class="k-tab-garis">{{ it.posisi.label }}</span><span class="k-tab-nama">{{ nama_pendek(fam.get(it.k.leluhur_id).nama) if fam.get(it.k.leluhur_id) else it.k.judul }}</span>
+      </button>
+      {% endfor %}
+      {% for gb in garis_belum %}
+      <a class="k-tab ghost" href="{{ url_for('keluarga_tulis', leluhur=gb.leluhur) }}"><span class="k-tab-garis">Garis {{ gb.garis }}</span><span class="k-tab-nama"><i class="bi bi-plus"></i> Tulis cerita</span></a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% for it in cerita %}{% set k = it.k %}
+    <section class="k-home {{ 'has-cover' if k.sampul }} {{ 'd-none' if not loop.first }}" data-kpanel="{{ loop.index0 }}">
+      <div class="k-home-cover {{ 'has-cover' if k.sampul }}" style="{{ sampul_bg(k) }}">
+        <div class="k-eyebrow">Mukadimah Silsilah</div>
+        <h2 class="k-title sm">{{ k.judul }}</h2>
+        {% if k.tagline %}<p class="k-tagline sm">{{ k.tagline }}</p>{% endif %}
+        {{ ornamen('light') }}
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+          {% if it.posisi.kalimat %}<div class="k-asal"><i class="bi bi-person-heart"></i> {{ it.posisi.kalimat }}</div>{% endif %}
+          {% if k.asal %}<div class="k-asal"><i class="bi bi-geo-alt"></i> {{ k.asal }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="k-home-body">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-7">
+            {% if k.mukadimah %}<div class="k-prose dropcap clamp">{{ k.mukadimah|cerita }}</div>{% endif %}
+            {% if k.kutipan %}<div class="k-quote-mini"><i class="bi bi-quote"></i> {{ k.kutipan }}{% if k.kutipan_oleh %} <span>— {{ k.kutipan_oleh }}</span>{% endif %}</div>{% endif %}
+            <div class="d-flex flex-wrap gap-2 mt-3">
+              <a href="{{ url_for('keluarga_lihat', kid=k.id) }}" class="btn btn-primary btn-sm"><i class="bi bi-book me-1"></i>Baca selengkapnya</a>
+              {% if k.leluhur_id %}<a href="{{ url_for('pohon', pid=k.leluhur_id) }}" class="btn btn-ghost btn-sm"><i class="bi bi-diagram-3 me-1"></i>Pohon keturunan</a>{% endif %}
+              <a href="{{ url_for('keluarga_daftar') }}" class="btn btn-ghost btn-sm">Semua cerita</a>
+            </div>
+          </div>
+          <div class="col-lg-5 text-center">
+            {% if k.leluhur_id and fam.get(k.leluhur_id) %}{{ pasangan_leluhur(fam, k.leluhur_id, 76) }}{% endif %}
+            {{ statbar(it.stats) }}
+          </div>
+        </div>
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  {% elif can_tulis_cerita() or garis_belum %}
+  <a href="{{ url_for('keluarga_tulis', leluhur=garis_belum[0].leluhur) if garis_belum else url_for('keluarga_tulis') }}" class="k-invite mb-4 fade-up">
+    <i class="bi bi-feather"></i>
+    <div><b>Tulis mukadimah keluarga</b><br><span>Ceritakan asal-usul keluarga besar Anda — akan tampil cantik di beranda setiap keturunannya.</span></div>
+    <i class="bi bi-chevron-right ms-auto"></i>
+  </a>
+  {% endif %}
+
+  <div class="row g-3 mb-4">
+    {% for ic, num, lbl, color in [('people-fill', stats.anggota, 'Anggota tercatat', 'var(--ft-primary)'), ('layers-fill', stats.generasi, 'Generasi', 'var(--ft-accent)'), ('person-check-fill', stats.akun, 'Akun aktif', 'var(--ft-sky)'), ('images', stats.foto, 'Foto kenangan', 'var(--ft-rose)')] %}
+    <div class="col-6 col-lg-3 fade-up d{{ loop.index0 }}">
+      <div class="ft-card stat c{{ loop.index0 }} h-100">
+        <i class="bi bi-{{ ic }}" style="color:{{ color }}"></i>
+        <div class="num mt-2">{{ num }}</div>
+        <div class="lbl">{{ lbl }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="ft-card p-4 h-100">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="mb-0">Baru bergabung di silsilah</h5>
+          <a href="{{ url_for('anggota') }}" class="small fw-semibold">Lihat semua</a>
+        </div>
+        {% if terbaru %}
+        <div class="row g-2">
+          {% for p in terbaru %}
+          <div class="col-sm-6">
+            <a href="{{ url_for('anggota_detail', pid=p.id) }}" class="rel-item">
+              {{ avatar(p, 42) }}
+              <div class="min-w-0"><div class="fw-semibold text-truncate">{{ nama(p) }}</div>
+                <div class="r">{{ p.pekerjaan or (lahir(p) and 'Lahir ' ~ lahir(p)) or 'Ditambahkan ' ~ (p.created_at|tgl) }}</div></div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="ic"><i class="bi bi-flower2"></i></div><p class="mt-2 mb-3">Silsilah masih kosong. Jadilah yang pertama menanam benihnya.</p>
+          <a href="{{ url_for('profil') }}" class="btn btn-primary btn-sm">Isi profil saya</a></div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-lg-5 d-flex flex-column gap-4">
+      {% if haul %}
+      <div class="ft-card p-4 haul-card">
+        <h5 class="mb-1"><i class="bi bi-flower1 me-1"></i>Mengenang</h5>
+        <p class="small ft-muted mb-3">Peringatan berpulangnya keluarga tercinta dalam 30 hari ke depan.</p>
+        {% for h in haul %}{% set p = h.p %}
+        <a href="{{ url_for('anggota_detail', pid=p.id) }}" class="rel-item">{{ avatar(p, 42) }}
+          <div class="flex-grow-1 min-w-0"><div class="fw-semibold text-truncate">{{ nama(p) }}</div>
+            <div class="r">{{ h.tanggal }} · {{ h.ke }} tahun berpulang</div></div>
+          {% if h.hari == 0 %}<span class="chip chip-accent">Hari ini</span>{% elif h.hari == 1 %}<span class="chip">Besok</span>{% else %}<span class="chip">{{ h.hari }} hari lagi</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if ultah %}
+      <div class="ft-card p-4 birthday-card">
+        <h5 class="mb-1">🎂 Ulang tahun keluarga</h5>
+        <p class="small ft-muted mb-3">30 hari ke depan — sapaan kecil bisa berarti besar.</p>
+        <div class="d-flex flex-column gap-1">
+          {% for u in ultah %}{% set p = u.p %}
+          <div class="rel-item">
+            <a href="{{ url_for('anggota_detail', pid=p.id) }}">{{ avatar(p, 42) }}</a>
+            <a href="{{ url_for('anggota_detail', pid=p.id) }}" class="flex-grow-1 min-w-0 text-body">
+              <div class="fw-semibold text-truncate">{{ p.nama }}</div>
+              <div class="r">{{ u.tanggal }} · ke-{{ u.ke }}</div>
+            </a>
+            {% if u.hari == 0 %}<span class="chip chip-rose">Hari ini 🎉</span>
+            {% elif u.hari == 1 %}<span class="chip chip-accent">Besok</span>
+            {% else %}<span class="chip">{{ u.hari }} hari lagi</span>{% endif %}
+            {% if p.id != me.person_id %}
+              {% if ucapan_saya.get(p.id) %}<span class="chip chip-mint" title="Ucapan Anda sudah dititipkan"><i class="bi bi-check2"></i> Terkirim</span>
+              {% else %}<button type="button" class="btn btn-sm btn-ucap" data-ucap-url="{{ url_for('ucapan_kirim', pid=p.id) }}" data-ucap-nama="{{ nama_pendek(p.nama) }}" data-ucap-ke="{{ u.ke }}" data-ucap-tgl="{{ u.tanggal }}"><i class="bi bi-gift"></i> Ucapkan</button>{% endif %}
+            {% endif %}
+            {% if p.wa and can_see_contact(p) and u.hari <= 1 and p.id != me.person_id %}
+            <a href="{{ wa_link(p.wa) }}?text={{ ('Selamat ulang tahun, ' ~ p.nama.split()[0] ~ '! Semoga sehat dan bahagia selalu 🎂')|urlencode }}" target="_blank" rel="noopener" class="btn btn-soft btn-sm px-2" title="Kirim ucapan"><i class="bi bi-whatsapp"></i></a>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if me.person_id %}
+      <div class="ft-card p-4">
+        <div class="d-flex align-items-center gap-2 mb-1"><h5 class="mb-0">Peran Anda</h5>
+          {% if me.is_admin %}<span class="chip chip-primary">Admin</span>{% else %}<span class="chip peran-{{ me_peran }}">{{ PERAN[me_peran] }}</span>{% endif %}</div>
+        <p class="small ft-muted mb-2">{% if me.is_admin %}Dapat mengelola seluruh data silsilah.{% else %}{{ PERAN_DESKRIPSI[me_peran] }}{% endif %}</p>
+        {% if jangkauan is not none %}<div class="small"><b>{{ jangkauan }}</b> orang dalam jangkauan Anda bisa dibuat, diubah & dihapus langsung. Selebihnya lewat usulan.</div>{% endif %}
+      </div>
+      {% endif %}
+      {% if menunggu %}
+      <div class="ft-card p-4 usulan-card">
+        <h5 class="mb-1"><i class="bi bi-inbox me-1"></i>Usulan menunggu Anda <span class="chip chip-accent">{{ menunggu|length }}</span></h5>
+        <p class="small ft-muted mb-3">Kerabat mengusulkan perbaikan data yang Anda kelola.</p>
+        {% for u in menunggu %}
+        <a href="{{ url_for('anggota_detail', pid=u.person_id) }}" class="suggest mb-2"><i class="lead bi bi-pencil-square"></i>
+          <span class="flex-grow-1 small"><b>{{ u.untuk }}</b><br><span class="ft-muted">dari {{ u.oleh }} · {{ loads(u.ringkasan)|length }} perubahan</span></span><i class="bi bi-chevron-right ft-muted"></i></a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="ft-card p-4">
+        <h5 class="mb-3">Langkah berikutnya</h5>
+        <div class="d-flex flex-column gap-2">
+          {% for s in suggestions %}
+          <a href="{{ s.url }}" class="suggest"><i class="lead bi bi-{{ s.icon }}"></i><span class="flex-grow-1 fw-semibold small">{{ s.text }}</span><i class="bi bi-chevron-right ft-muted"></i></a>
+          {% endfor %}
+          {% if my %}
+          <a href="{{ url_for('pohon', pid=my.id) }}" class="suggest"><i class="lead bi bi-diagram-3"></i><span class="flex-grow-1 fw-semibold small">Lihat pohon keluarga saya</span><i class="bi bi-chevron-right ft-muted"></i></a>
+          {% endif %}
+          <a href="{{ url_for('bandingkan') }}" class="suggest"><i class="lead bi bi-arrow-left-right"></i><span class="flex-grow-1 fw-semibold small">Cari tahu hubungan saya dengan seseorang</span><i class="bi bi-chevron-right ft-muted"></i></a>
+          <a href="{{ url_for('anggota_tambah') }}" class="suggest"><i class="lead bi bi-person-plus"></i><span class="flex-grow-1 fw-semibold small">Tambahkan anggota keluarga lain</span><i class="bi bi-chevron-right ft-muted"></i></a>
+        </div>
+      </div>
+      <div class="ft-card p-4" style="background:var(--ft-accent-soft);border-color:transparent">
+        <div class="d-flex gap-3">
+          <i class="bi bi-lightbulb fs-4" style="color:var(--ft-accent)"></i>
+          <div class="small"><b>Tahukah Anda?</b><br>Dalam tradisi Jawa ada sebutan hingga 18 generasi ke atas — dari bapak, simbah, buyut, canggah, wareng, udeg-udeg, sampai gantung siwur. Mari catat sejauh yang kita ingat, sedikit demi sedikit.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ modal_ucapan(STIKER) }}
+{% if kejutan %}{{ kejutan_layar(kejutan, my, fam) }}{% endif %}
+{% endblock %}

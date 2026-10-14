@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Minta akses tamu{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="ft-card auth-card fade-up" style="max-width:520px">
+    {% if terkirim %}
+    <div class="text-center">
+      <div class="status-emoji mb-3">📨</div>
+      <h3>Permintaan terkirim</h3>
+      <p class="ft-muted">Admin {{ APP_NAME }} akan meninjau permintaan Anda. Bila disetujui, Anda akan menerima <b>link tamu</b> untuk menjelajah silsilah ini (hanya melihat).</p>
+      <a href="{{ url_for('index') }}" class="btn btn-ghost mt-2">Selesai</a>
+    </div>
+    {% else %}
+    <div class="text-center mb-4">
+      <div class="feature-icon sky mx-auto mb-3"><i class="bi bi-compass"></i></div>
+      <h3 class="mb-1">Minta akses tamu</h3>
+      <p class="ft-muted small mb-0">Untuk kerabat dari silsilah keluarga lain yang ingin menelusuri orang yang sama di silsilah ini. Akses tamu hanya untuk melihat, dan diberikan atas persetujuan admin.</p>
+    </div>
+    <form method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="mb-3"><label class="form-label">Nama Anda <span class="text-danger">*</span></label>
+        <input name="nama" class="form-control" required autocomplete="name" autocapitalize="words"></div>
+      <div class="mb-3"><label class="form-label">Email</label>
+        <input name="email" type="email" class="form-control" autocomplete="email" inputmode="email" autocapitalize="off" placeholder="Untuk menerima link tamu"></div>
+      <div class="mb-3"><label class="form-label">Dari silsilah / keluarga mana?</label>
+        <input name="asal" class="form-control" placeholder="mis. Keluarga Besar A — serverA.com"></div>
+      <div class="mb-3"><label class="form-label">Siapa yang ingin ditelusuri?</label>
+        <input name="tujuan" class="form-control" value="{{ tujuan }}" placeholder="mis. A bin ZD (lahir ±1950)"></div>
+      <div class="mb-3"><label class="form-label">Link silsilah Anda <span class="ft-muted fw-normal">(opsional)</span></label>
+        <input name="link_asal" type="url" inputmode="url" class="form-control" placeholder="https://… link ke orang yang sama di silsilah Anda">
+        <div class="form-hint">Agar keluarga di sini juga bisa menjelajah balik ke silsilah Anda.</div></div>
+      <div class="mb-4"><label class="form-label">Alasan / keterangan</label>
+        <textarea name="alasan" rows="3" class="form-control" placeholder="mis. Admin kedua silsilah sepakat bahwa A bin ZD adalah orang yang sama"></textarea></div>
+      <button class="btn btn-primary w-100">Kirim permintaan</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

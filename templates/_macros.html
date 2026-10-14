@@ -1,0 +1,117 @@
+{% macro avatar(p, size=48, ring=true) -%}
+{%- if p -%}
+<span class="avatar-ring {{ 'gold' if p.wafat }}" style="font-size:{{ size }}px"{% if p.wafat %} title="Telah berpulang"{% endif %}>
+  {%- if p.foto -%}
+  <img src="{{ url_for('foto', name=p.foto) }}" class="avatar {{ 'wafat' if p.wafat }}" style="--s:{{ size }}px" alt="{{ p.nama }}" loading="lazy">
+  {%- else -%}
+  <span class="avatar {{ 'wafat' if p.wafat }}" style="--s:{{ size }}px;--h:{{ hue(p.id) }}">{{ initials(p.nama) }}</span>
+  {%- endif -%}
+  {%- if p.wafat and ring %}<span class="dove" title="Telah berpulang"><i class="bi bi-flower1"></i></span>{% endif -%}
+</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro nama(p) -%}
+{%- if p.wafat %}<span title="Telah berpulang">{{ 'Alm.' if p.jenis_kelamin == 'L' else 'Almh.' if p.jenis_kelamin == 'P' else 'Alm.' }}</span> {% endif %}{{ p.nama }}
+{%- endmacro %}
+
+{% macro picker(key, label, jk='', id_name=None, id_val=None, nama_val='', fam=None, allow_new=true, exclude='', placeholder='Ketik nama untuk mencari…', hint=None, predict=false) -%}
+{%- set selected = fam.people.get(id_val|int) if (fam and id_val and (id_val|string).isdigit()) else None -%}
+<div class="picker {{ 'has-value' if selected or nama_val }}" data-picker data-jk="{{ jk }}" data-allow-new="{{ 1 if allow_new else 0 }}" data-exclude="{{ exclude }}" {% if predict %}data-role="{{ key }}"{% endif %}>
+  {% if label %}<label class="form-label">{{ label }}</label>{% endif %}
+  <input type="hidden" name="{{ id_name or key ~ '_id' }}" data-role="id" value="{{ selected.id if selected else '' }}">
+  {% if allow_new %}<input type="hidden" name="{{ key }}_nama" data-role="nama" value="{{ '' if selected else nama_val or '' }}">{% endif %}
+  <div class="picker-box">
+  <div class="input-icon picker-input">
+    <i class="bi bi-search"></i>
+    <input type="text" class="form-control" placeholder="{{ placeholder }}" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="search">
+  </div>
+  <div class="picked">
+    <span class="pick-av">{% if selected %}{{ avatar(selected, 34, false) }}{% else %}<span class="avatar" style="--s:34px;--h:160">{{ initials(nama_val) }}</span>{% endif %}</span>
+    <span class="nm">{{ selected.nama if selected else nama_val }}</span>
+    <span class="badge-new chip chip-accent {{ 'd-none' if selected }}">baru</span>
+    <button type="button" class="btn btn-sm btn-ghost picker-clear px-2" title="Ganti"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="picker-menu"></div>
+  </div>
+  {% if allow_new %}<div class="picker-typed form-hint d-none"><i class="bi bi-info-circle"></i> <span></span></div>{% endif %}
+  {% if hint %}<div class="form-hint">{{ hint }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro tnode(p, fam, focus=None, my=None, cls='', label=None, badge=None) -%}
+{% set pu = pekan_ultah(p) %}
+<a href="{{ url_for('pohon', pid=p.id, mode=request.args.get('mode','keturunan')) }}" class="tnode {{ p.jenis_kelamin or '' }} {{ 'focus' if p.id == focus }} {{ 'me' if p.id == my }} {{ 'ultah' if pu }} {{ cls }}" title="{{ ('🎂 Pekan ulang tahun ke-' ~ pu.ke ~ ' · ') if pu }}Lihat pohon {{ p.nama }}">
+  {% if pu %}<span class="ultah-lencana" aria-hidden="true">🎂</span>{% endif %}
+  {% if badge and p.id != my %}<span class="tbadge {{ p.jenis_kelamin or '' }}">{{ badge }}</span>{% endif %}
+  <span class="tn-foto">
+    {%- if pu %}<svg class="topi-mini" viewBox="0 0 60 70" aria-hidden="true">
+      <defs><linearGradient id="tg{{ p.id }}" x1="0" x2="1"><stop offset="0" stop-color="#a593f0"/><stop offset="1" stop-color="#f1a7c4"/></linearGradient></defs>
+      <path d="M30 6 L54 62 Q30 70 6 62 Z" fill="url(#tg{{ p.id }})"/>
+      <path d="M18 34 L42 34 M13 48 L47 48" stroke="#fff6c8" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="22" cy="24" r="2.6" fill="#fff"/><circle cx="36" cy="42" r="2.6" fill="#fff"/>
+      <circle cx="30" cy="6" r="7" fill="#f6d97a"/>
+      <path d="M5 62 Q30 72 55 62" stroke="#fff" stroke-width="3.5" fill="none"/>
+    </svg>{% endif -%}
+    {{ avatar(p, 52) }}
+  </span>
+  <span class="nm">{{ p.nama }}</span>
+  {% set tl = tautan_map().get(p.id) %}
+  {% if tl %}<span class="tlink" role="button" tabindex="0" data-links='{{ tl|tojson|forceescape }}'
+     title="Buka silsilah {{ tl[0].label }}{% if tl|length > 1 %} (+{{ tl|length - 1 }}){% endif %}"><i class="bi bi-link-45deg"></i></span>{% endif %}
+  <span class="yr">{% if label %}{{ label }}{% if p.tahun_lahir or p.wafat %} · {% endif %}{% endif %}{% if p.wafat %}{% if p.tahun_lahir or p.tahun_wafat %}{{ p.tahun_lahir or '…' }}–{{ p.tahun_wafat or '…' }}{% else %}alm.{% endif %}{% elif p.tahun_lahir %}{{ p.tahun_lahir }}{% endif %}</span>
+</a>
+{%- endmacro %}
+
+{% macro karangan(size=120) -%}
+{# karangan bunga melingkar: daun zaitun + melati, mengelilingi foto #}
+{%- set S = (size * 1.42)|round|int -%}
+<svg class="karangan" width="{{ S }}" height="{{ S }}" viewBox="-71 -71 142 142" aria-hidden="true">
+  <defs>
+    <linearGradient id="daun" x1="0" x2="1"><stop offset="0" stop-color="#8fb59a"/><stop offset="1" stop-color="#c9dcc4"/></linearGradient>
+    <radialGradient id="melati"><stop offset="0" stop-color="#fffbe8"/><stop offset=".7" stop-color="#ffffff"/><stop offset="1" stop-color="#f1e7cf"/></radialGradient>
+  </defs>
+  {% for i in range(28) %}{% set a = i * 360 / 28 %}
+  <g transform="rotate({{ a }}) translate(0,-62) rotate({{ 35 if i % 2 else -35 }})">
+    <ellipse rx="3.2" ry="8" fill="url(#daun)" opacity=".9"/>
+  </g>
+  {% endfor %}
+  {% for i in range(10) %}{% set a = i * 36 + 9 %}
+  <g transform="rotate({{ a }}) translate(0,-63)">
+    {% for j in range(5) %}<ellipse transform="rotate({{ j * 72 }}) translate(0,-3.2)" rx="2.4" ry="3.6" fill="url(#melati)" stroke="#eadcb6" stroke-width=".4"/>{% endfor %}
+    <circle r="1.5" fill="#e9c45a"/>
+  </g>
+  {% endfor %}
+  {% for a in (150, 210) %}<g transform="rotate({{ a }}) translate(0,-64)"><circle r="4.2" fill="#f2b8c6"/><circle r="2.2" fill="#e88fa8"/></g>{% endfor %}
+</svg>
+{%- endmacro %}
+
+{% macro kelopak(n=14) -%}
+<div class="kelopak" aria-hidden="true">
+  {% for i in range(n) %}<span class="k{{ i % 3 }}" style="--x:{{ (i * 37) % 100 }}%;--d:{{ (i * 1.7) % 9 }}s;--t:{{ 9 + (i * 1.3) % 6 }}s;--s:{{ 0.7 + (i % 4) * 0.15 }}"></span>{% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro bendera(n=15) -%}
+{# untaian bendera segitiga melengkung #}
+<svg class="bendera" viewBox="0 0 600 64" preserveAspectRatio="none" aria-hidden="true">
+  <path d="M0 6 Q300 52 600 6" fill="none" stroke="rgba(120,90,140,.45)" stroke-width="1.6"/>
+  {% set warna = ['#f1a7c4', '#a593f0', '#f6d97a', '#9fd8bf', '#9cc6ee', '#f4b98f'] %}
+  {% for i in range(n) %}
+    {% set x = 20 + i * (560 / (n - 1)) %}{% set t = x / 600 %}
+    {% set y = 6 + 46 * 2 * t * (1 - t) %}
+    <polygon points="{{ x - 13 }},{{ y }} {{ x + 13 }},{{ y }} {{ x }},{{ y + 24 }}" fill="{{ warna[i % 6] }}" class="bf" style="--i:{{ i }}"/>
+  {% endfor %}
+</svg>
+{%- endmacro %}
+
+{% macro topi_pesta() -%}
+<svg class="topi-pesta" viewBox="0 0 60 70" aria-hidden="true">
+  <defs><linearGradient id="topiG" x1="0" x2="1"><stop offset="0" stop-color="#a593f0"/><stop offset="1" stop-color="#f1a7c4"/></linearGradient></defs>
+  <path d="M30 6 L54 62 Q30 70 6 62 Z" fill="url(#topiG)"/>
+  <path d="M18 34 L42 34 M13 48 L47 48" stroke="#fff6c8" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+  <circle cx="22" cy="24" r="2.4" fill="#fff"/><circle cx="36" cy="42" r="2.4" fill="#fff"/><circle cx="26" cy="56" r="2.4" fill="#fff"/>
+  <circle cx="30" cy="6" r="6.5" fill="#f6d97a"/>
+  <path d="M5 62 Q30 72 55 62" stroke="#fff" stroke-width="3" fill="none" opacity=".8"/>
+</svg>
+{%- endmacro %}

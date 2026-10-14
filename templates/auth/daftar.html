@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Daftar{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="ft-card auth-card fade-up">
+    <div class="text-center mb-4">
+      <div class="feature-icon mx-auto mb-3"><i class="bi bi-tree"></i></div>
+      <h3 class="mb-1">Bergabung dengan keluarga</h3>
+      <p class="ft-muted small mb-0">Hanya butuh satu menit. Admin keluarga akan meninjau pendaftaran Anda agar silsilah tetap aman.</p>
+    </div>
+    <form method="post" novalidate>
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Nama lengkap</label>
+        <div class="input-icon"><i class="bi bi-person"></i><input name="nama" class="form-control" value="{{ v.get('nama','') }}" required autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="Nama sesuai panggilan keluarga"></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <div class="input-icon"><i class="bi bi-envelope"></i><input type="email" name="email" class="form-control" value="{{ v.get('email','') }}" required autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" placeholder="nama@email.com"></div>
+        <div class="form-hint">Tautan aktivasi akan dikirim ke sini setelah disetujui.</div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-sm-6">
+          <label class="form-label">Kata sandi</label>
+          <input type="password" name="password" class="form-control" minlength="8" required autocomplete="new-password" enterkeyhint="next" placeholder="Min. 8 karakter">
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label">Ulangi</label>
+          <input type="password" name="password2" class="form-control" minlength="8" required autocomplete="new-password" enterkeyhint="next" placeholder="Ketik ulang">
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Hubungan Anda dengan keluarga <span class="ft-muted fw-normal">(opsional)</span></label>
+        <textarea name="catatan" class="form-control" rows="2" placeholder="Contoh: Saya anak dari Pak Ahmad (putra ke-2 Mbah Karto)">{{ v.get('catatan','') }}</textarea>
+        <div class="form-hint"><i class="bi bi-lightbulb"></i> Membantu admin mengenali Anda lebih cepat.</div>
+      </div>
+      <button class="btn btn-primary w-100 py-2">Kirim pendaftaran</button>
+    </form>
+    <p class="text-center small ft-muted mt-4 mb-0">Sudah punya akun? <a href="{{ url_for('masuk') }}" class="fw-semibold">Masuk</a></p>
+  </div>
+</div>
+{% endblock %}

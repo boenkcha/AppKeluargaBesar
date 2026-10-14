@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, nama, picker with context %}
+{% block title %}Telusuri Hubungan{% endblock %}
+
+{% macro lnode(pid, cls='', role='') -%}
+{%- set x = fam.get(pid) -%}
+<a href="{{ url_for('anggota_detail', pid=pid) }}" class="lin-node {{ cls }}">{{ avatar(x, 36, false) }}<span class="min-w-0"><div class="nm">{{ nama(x) }}</div>{% if role %}<div class="r">{{ role }}</div>{% endif %}</span></a>
+{%- endmacro %}
+
+{% macro pathmap(chain) -%}
+{%- set lay = fam.chain_layout(chain) -%}
+<div class="pathmap-box" data-pathmap-box>
+<div class="pathmap-tools">
+  <button type="button" class="btn btn-ghost btn-sm px-2" data-pm="out" title="Perkecil"><i class="bi bi-dash-lg"></i></button>
+  <span class="btn btn-ghost btn-sm disabled" data-pm="lbl" style="min-width:64px">100%</span>
+  <button type="button" class="btn btn-ghost btn-sm px-2" data-pm="in" title="Perbesar"><i class="bi bi-plus-lg"></i></button>
+  <button type="button" class="btn btn-ghost btn-sm px-2" data-pm="fit" title="Muat layar"><i class="bi bi-arrows-angle-contract"></i></button>
+</div>
+<div class="pathmap-wrap">
+  <div class="pathmap-scale">
+  <div class="pathmap" data-pathmap style="grid-template-columns: repeat({{ (lay|map(attribute='col')|max) + 2 }}, 88px); grid-template-rows: repeat({{ (lay|map(attribute='row')|max) + 1 }}, auto);">
+    <svg class="pathmap-lines" aria-hidden="true"></svg>
+    {% for n in lay %}
+    <div class="pm-cell" style="grid-column: {{ n.col + 1 }} / span 2; grid-row: {{ n.row + 1 }};" data-i="{{ loop.index0 }}"
+         data-word="{{ n.word }}" data-marry="{{ 1 if n.marry else 0 }}" data-ex="{{ 1 if n.ex else 0 }}">
+      {{ lnode(n.id, 'endpoint' if loop.first or loop.last else '') }}
+    </div>
+    {% endfor %}
+  </div>
+  </div>
+</div>
+<div class="small ft-muted text-center mt-1">Seret untuk menggeser · Ctrl/⌘ + scroll atau tombol di atas untuk zoom</div>
+</div>
+{%- endmacro %}
+
+{% macro role_of(child, parent) -%}
+Anak dari {{ fam.get(parent).nama }}
+{%- endmacro %}
+
+{% block content %}
+<div class="container py-4" style="max-width:1180px">
+  <div class="text-center mb-4 fade-up">
+    <span class="chip chip-primary mb-2"><i class="bi bi-signpost-split"></i> Penelusuran silsilah</span>
+    <h2 class="mb-1">Bagaimana kita terhubung?</h2>
+    <p class="ft-muted mb-0">Pilih dua orang. Kami telusuri leluhur bersama mereka dan jalur yang menghubungkannya.</p>
+  </div>
+
+  <form id="compareForm" class="ft-card p-4 mb-4 fade-up d1" method="get">
+    <div class="vs-wrap">
+      {{ picker('a', 'Orang pertama', id_name='a', id_val=pa.id if pa else None, fam=fam, allow_new=false) }}
+      <button type="button" class="vs border-0" id="swapBtn" title="Tukar posisi"><i class="bi bi-arrow-left-right"></i></button>
+      {{ picker('b', 'Orang kedua', id_name='b', id_val=pb.id if pb else None, fam=fam, allow_new=false) }}
+    </div>
+    <div class="text-center mt-4">
+      <button class="btn btn-primary px-4" id="compareBtn" {{ 'disabled' if not (pa and pb) }}><i class="bi bi-search-heart me-1"></i>Telusuri hubungan</button>
+    </div>
+  </form>
+
+  {% if pa and pb %}
+  {% if rel.kind == 'self' %}
+  <div class="ft-card rel-result fade-up"><div class="status-emoji mb-2">🪞</div><div class="big">Orang yang sama</div><p class="ft-muted mb-0">Coba pilih orang lain untuk dibandingkan.</p></div>
+
+  {% elif rel.kind %}
+  {% set ab, ba = rel.ab, rel.ba %}
+  <div class="ft-card rel-result mb-4 fade-up d2">
+    <div class="d-flex justify-content-center align-items-center gap-3 gap-md-5 mb-4">
+      <div class="text-center">{{ avatar(pa, 88) }}<div class="fw-bold mt-2">{{ pa.nama }}</div></div>
+      <div class="text-center">
+        <i class="bi bi-{{ 'heart-fill' if rel.kind == 'nikah' else 'signpost-split' if rel.kind == 'jauh' else 'link-45deg' }} fs-2" style="color:var({{ '--ft-rose' if rel.kind == 'nikah' else '--ft-accent' if rel.kind == 'jauh' else '--ft-primary' }})"></i>
+        <div class="small ft-muted">{{ 'ikatan pernikahan' if rel.kind == 'nikah' else 'kerabat jauh' if rel.kind == 'jauh' else 'hubungan darah' }}</div>
+      </div>
+      <div class="text-center">{{ avatar(pb, 88) }}<div class="fw-bold mt-2">{{ pb.nama }}</div></div>
+    </div>
+    <div class="big grad-text mb-2">{{ ab.label }}</div>
+    {% if rel.kind == 'jauh' and ab.bridge %}{% set x = fam.get(ab.bridge) %}
+    <p class="rel-sentence mb-1"><b>{{ pa.nama }}</b> adalah <b>{{ ab.label|lower }}</b> dari {{ pb.nama }}</p>
+    {% if not ab.via_couple %}<p class="small ft-muted mb-2">{{ ab.lab_ax }} dari {{ x.nama }}, yang merupakan {{ ab.lab_xb|lower }} dari {{ pb.nama.split(',')[0] }}.</p>{% endif %}
+    {% if ba %}<p class="rel-sentence mb-3"><b>{{ pb.nama }}</b> adalah <b>{{ ba.label|lower }}</b> dari {{ pa.nama }}.</p>{% endif %}
+    {% elif rel.kind == 'jauh' %}
+    <p class="rel-sentence mb-3">Keduanya tersambung lewat rangkaian hubungan keluarga dan pernikahan — lihat jalurnya di bawah.</p>
+    {% else %}
+    <p class="rel-sentence mb-1"><b>{{ pa.nama }}</b> adalah <b>{{ ab.label|lower }}</b> dari {{ pb.nama }}.</p>
+    {% if ba %}<p class="rel-sentence mb-3"><b>{{ pb.nama }}</b> adalah <b>{{ ba.label|lower }}</b> dari {{ pa.nama }}.</p>{% endif %}
+    {% endif %}
+    <span class="chip">{{ ab.desc }}</span>
+    {% if ab.besan and ab.besan.cucu %}
+    <div class="mt-3"><span class="chip chip-accent"><i class="bi bi-stars"></i> Cucu bersama: {% for k in ab.besan.cucu %}{{ panggilan(fam.get(k).nama) }}{{ ', ' if not loop.last }}{% endfor %}</span></div>
+    {% endif %}
+    {% if ab.sapaan and not (rel.kind == 'darah' and ab.blood.da + ab.blood.db <= 1) %}
+    {% set na, nb = panggilan(pa.nama), panggilan(pb.nama) %}
+    <div class="sapaan mt-4 mx-auto">
+      <div class="small fw-bold mb-2"><i class="bi bi-chat-heart"></i> Sapaan yang pas</div>
+      <div class="row g-2 text-start">
+        <div class="col-sm-6"><div class="sapaan-item"><span class="ft-muted small">{{ na }} memanggil {{ nb }}</span><b>“{{ ab.sapaan.a_ke_b }}”</b></div></div>
+        <div class="col-sm-6"><div class="sapaan-item"><span class="ft-muted small">{{ nb }} memanggil {{ na }}</span><b>“{{ ab.sapaan.b_ke_a }}”</b></div></div>
+      </div>
+      {% if ab.gen %}<div class="small ft-muted mt-2">{{ na }} berada {{ ab.gen|abs }} generasi {{ 'di atas' if ab.gen > 0 else 'di bawah' }} {{ nb }}.</div>{% endif %}
+    </div>
+    {% endif %}
+    {% if rel.kind == 'darah' %}{% set r = ab.blood %}
+    <span class="chip chip-accent ms-1">Jarak kekerabatan: {{ r.da + r.db }} langkah</span>
+    {% endif %}
+  </div>
+
+  <div class="ft-card p-4 fade-up d3">
+    <h5 class="mb-1">Jalur hubungan</h5>
+    {% if rel.kind == 'darah' %}
+    {% set r = ab.blood %}
+    <p class="ft-muted small mb-4">
+      {% if r.da == 0 or r.db == 0 %}Satu garis keturunan langsung.
+      {% else %}Kedua garis bertemu pada leluhur bersama:
+        {% for t in r.tops %}<b>{{ fam.get(t).nama }}</b>{{ ' & ' if not loop.last }}{% endfor %}.
+      {% endif %}
+    </p>
+    <div class="lineage">
+      <div class="top">
+        {% for t in r.tops %}{{ lnode(t, 'ancestor', 'Leluhur bersama' if r.da and r.db else '') }}{% if not loop.last %}<i class="bi bi-heart-fill mx-2 align-self-center" style="color:var(--ft-rose)"></i>{% endif %}{% endfor %}
+      </div>
+      {% set left = r.path_a[:-1]|reverse|list %}{% set right = r.path_b[:-1]|reverse|list %}
+      {% if left and right %}<div class="lineage-split"></div>{% endif %}
+      {% for side, ep in [(left, pa.id), (right, pb.id)] %}
+      <div class="col" style="{{ 'display:none' if not side }}{{ 'grid-column:1/-1' if not (left and right) }}">
+        {% for x in side %}<div class="step">{{ lnode(x, 'endpoint' if x == ep else '', role_of(x, side[loop.index0 - 1] if loop.index0 else r.top)) }}</div>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% elif rel.kind == 'jauh' and ab.bridge %}
+    {% set x = fam.get(ab.bridge) %}
+    <p class="ft-muted small mb-3">Tidak ada hubungan darah langsung. {% if ab.chain_full %}Kedua keluarga tersambung lewat pernikahan di bawah ini.{% else %}Kedua keluarga bertemu pada <b>{{ x.nama }}</b>, yang sedarah dengan keduanya.{% endif %}</p>
+    {% if ab.couple %}{% set m1, m2, mm = ab.couple %}
+    <div class="bridge-note mb-4">
+      <i class="bi bi-{{ 'heartbreak' if ab.ex else 'heart-fill' }} fs-4"></i>
+      <div>Pernikahan penyambung: <b>{{ fam.get(m1).nama }}</b> &amp; <b>{{ fam.get(m2).nama }}</b>
+        <span class="chip ms-1">{{ {'menikah':'Menikah','cerai':'Bercerai','wafat':'Berpisah karena wafat'}.get(mm.status, mm.status) }}</span>
+        {% if ab.ex %}<div class="small ft-muted mt-1">Walau pernikahan telah berakhir, {{ x.nama.split(',')[0] }} tetap menjadi jembatan darah yang menyatukan kedua keluarga — ceritanya tetap bisa ditelusuri.</div>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if ab.chain_full %}
+    {{ pathmap(ab.chain_full) }}
+    {% set kids = fam.marriages(ab.couple[0])|selectattr('spouse', 'equalto', ab.couple[1])|map(attribute='children')|first %}
+    {% if kids %}<p class="small ft-muted text-center mt-3 mb-0"><i class="bi bi-stars"></i> Anak dari pernikahan ini — {% for k in kids %}<b>{{ panggilan(fam.get(k).nama) }}</b>{{ ', ' if not loop.last }}{% endfor %} — menjadi jembatan darah kedua keluarga.</p>{% endif %}
+    {% else %}
+    <div class="row g-3">
+      {% for who, path in [(pa, ab.path_a), (pb, ab.path_b)] %}
+      <div class="col-md-6">
+        <div class="small fw-semibold ft-muted mb-2">Garis {{ who.nama.split(',')[0] }}</div>
+        <div class="vchain">
+          {% for n in path %}
+            {% if not loop.first %}<div class="vstep"><i class="bi bi-arrow-down"></i> {{ fam.step_word(path[loop.index0 - 1], n) }}</div>{% endif %}
+            {{ lnode(n, 'ancestor' if n == ab.bridge else ('endpoint' if loop.first else '')) }}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% elif rel.kind == 'jauh' %}
+    <p class="ft-muted small mb-4">Jalur terpendek melalui hubungan keluarga dan pernikahan:</p>
+    {{ pathmap(ab.chain) }}
+    {% else %}
+    <p class="ft-muted small mb-4">Terhubung melalui ikatan pernikahan.</p>
+    <div class="chain">
+      {% for x in ab.chain %}
+        {{ lnode(x, 'endpoint' if x in (pa.id, pb.id) else ('ancestor' if x == ab.via else '')) }}
+        {% if not loop.last %}<i class="bi bi-{{ 'heart-fill' if ab.chain[loop.index] in fam.spouses(x) else 'chevron-right' }} arrow"></i>{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% else %}
+  <div class="ft-card rel-result fade-up d2">
+    <div class="status-emoji mb-3">🧩</div>
+    <div class="big mb-2" style="font-size:1.5rem">Hubungannya belum terlihat</div>
+    <p class="ft-muted mx-auto" style="max-width:520px">Bukan berarti tidak bersaudara — sering kali hanya karena data orang tua atau kakek-nenek salah satunya belum dicatat. Yuk bantu lengkapi, siapa tahu jalurnya segera tersambung.</p>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+      <a href="{{ url_for('pohon', pid=pa.id, mode='leluhur') }}" class="btn btn-soft btn-sm">Leluhur {{ pa.nama.split()[0] }}</a>
+      <a href="{{ url_for('pohon', pid=pb.id, mode='leluhur') }}" class="btn btn-soft btn-sm">Leluhur {{ pb.nama.split()[0] }}</a>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

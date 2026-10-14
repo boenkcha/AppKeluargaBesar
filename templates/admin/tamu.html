@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, picker with context %}
+{% block title %}Akses Tamu{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <a href="{{ url_for('admin') }}" class="small ft-muted"><i class="bi bi-arrow-left"></i> Ruang admin</a>
+  <h2 class="mt-2 mb-1">Akses Tamu</h2>
+  <p class="ft-muted">Izinkan kerabat dari silsilah lain (server berbeda) menjelajah silsilah ini — hanya melihat, terbatas pada keluarga sedarah titik masuk, tanpa kontak pribadi.</p>
+
+  {% if baru %}
+  <div class="ft-card p-4 mb-4 fade-up" style="border-color:var(--ft-mint)">
+    <h6 class="mb-1"><i class="bi bi-link-45deg me-1"></i>Link tamu untuk {{ baru.nama }}</h6>
+    <p class="small ft-muted">Berikan kepada admin silsilah asalnya. Admin tersebut bisa memasangnya sebagai <b>tautan</b> di profil orang yang sama di server mereka.</p>
+    <div class="small fw-semibold mb-1">Langsung ke {{ baru.titik }}</div>
+    <div class="link-box mb-2">{{ baru.link_titik }}</div>
+    <button class="btn btn-soft btn-sm" data-copy="{{ baru.link_titik }}"><i class="bi bi-clipboard"></i> Salin link</button>
+  </div>
+  {% endif %}
+
+  {% if minta %}
+  <div class="ft-card p-4 mb-4 fade-up">
+    <h5 class="mb-3">Permintaan menunggu <span class="chip chip-accent">{{ minta|length }}</span></h5>
+    {% for m in minta %}
+    <div class="usulan-item">
+      <div class="d-flex justify-content-between flex-wrap gap-1"><b>{{ m.nama }}</b><span class="small ft-muted">{{ m.created_at|tgl }}</span></div>
+      <div class="small">{% if m.asal %}Dari <b>{{ m.asal }}</b> · {% endif %}{% if m.email %}{{ m.email }}{% endif %}</div>
+      {% if m.tujuan %}<div class="small mt-1"><i class="bi bi-person-search"></i> Ingin menelusuri: <b>{{ m.tujuan }}</b></div>{% endif %}
+      {% if m.alasan %}<div class="small ft-muted fst-italic mt-1">“{{ m.alasan }}”</div>{% endif %}
+      <form method="post" action="{{ url_for('admin_tamu_buat') }}" class="row g-2 align-items-end mt-2">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="minta_id" value="{{ m.id }}"><input type="hidden" name="nama" value="{{ m.nama }}">
+        <input type="hidden" name="asal" value="{{ m.asal or '' }}"><input type="hidden" name="email" value="{{ m.email or '' }}">
+        <div class="col-md-6">{{ picker('titik' ~ m.id, 'Titik masuk (orang yang sama)', '', id_name='titik_id', fam=fam, allow_new=false, placeholder=m.tujuan or 'Cari nama…') }}</div>
+        <div class="col-6 col-md-3"><label class="form-label">Berlaku</label>
+          <select name="hari" class="form-select"><option value="30">30 hari</option><option value="90" selected>90 hari</option><option value="365">1 tahun</option><option value="">Tanpa batas</option></select></div>
+        <div class="col-6 col-md-3 d-flex gap-2"><button class="btn btn-primary btn-sm flex-grow-1"><i class="bi bi-check2"></i> Setujui</button></div>
+        <div class="col-12"><label class="form-label">Link silsilah asal <span class="ft-muted fw-normal">(tautan balik, opsional)</span></label>
+          <input name="link_asal" type="url" inputmode="url" class="form-control" value="{{ m.link_asal or tebak_link(m.asal) }}" placeholder="https://… (link tamu/profil dari silsilah mereka)">
+          <div class="form-hint">Bila diisi, profil titik masuk otomatis menampilkan tautan ke silsilah asal tamu.</div></div>
+      </form>
+      <form method="post" action="{{ url_for('admin_tamu_aksi', aid=m.id, aksi='tolak') }}" class="mt-2" data-confirm="Tolak permintaan ini?">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm">Tolak</button></form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="ft-card p-4 fade-up h-100">
+        <h5 class="mb-3"><i class="bi bi-person-plus me-1"></i>Buat akses tamu</h5>
+        <form method="post" action="{{ url_for('admin_tamu_buat') }}" class="d-flex flex-column gap-3">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <div><label class="form-label">Nama tamu <span class="text-danger">*</span></label>
+            <input name="nama" class="form-control" required placeholder="mis. Admin Keluarga Besar A"></div>
+          <div><label class="form-label">Dari silsilah</label>
+            <input name="asal" class="form-control" placeholder="mis. Keluarga Besar A — serverA.com"></div>
+          {{ picker('titikbaru', 'Titik masuk (orang yang sama)', '', id_name='titik_id', fam=fam, allow_new=false, hint='Tamu bisa melihat keluarga sedarah orang ini beserta pasangannya.') }}
+          <div><label class="form-label">Berlaku</label>
+            <select name="hari" class="form-select"><option value="30">30 hari</option><option value="90" selected>90 hari</option><option value="365">1 tahun</option><option value="">Tanpa batas</option></select></div>
+          <div><label class="form-label">Link silsilah asal <span class="ft-muted fw-normal">(tautan balik, opsional)</span></label>
+            <input name="link_asal" type="url" inputmode="url" class="form-control" placeholder="https://… link dari silsilah tamu">
+            <div class="form-hint">Profil titik masuk akan menampilkan tautan ke silsilah asal tamu, agar keluarga di sini bisa ikut menjelajah ke sana.</div></div>
+          <button class="btn btn-primary">Buat link tamu</button>
+          <div class="small ft-muted"><i class="bi bi-info-circle"></i> Bagikan juga halaman permintaan: <span class="link-box d-inline-block mt-1">{{ url_for('tamu_minta', _external=True) }}</span></div>
+        </form>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="ft-card p-4 fade-up h-100">
+        <h5 class="mb-3">Daftar akses tamu</h5>
+        {% for a in akses %}{% set aktif = a.aktif and (not a.berlaku_sampai or a.berlaku_sampai >= hari_ini_iso) %}
+        <div class="usulan-item {{ '' if aktif else 'opacity-75' }}" id="akses{{ a.id }}">
+          <div class="d-flex justify-content-between flex-wrap gap-1">
+            <div><b>{{ a.nama }}</b>{% if a.asal %} <span class="small ft-muted">· {{ a.asal }}</span>{% endif %}</div>
+            <span class="chip {{ 'chip-mint' if aktif else '' }}">{{ 'Aktif' if aktif else ('Dicabut' if not a.aktif else 'Kedaluwarsa') }}</span>
+          </div>
+          <div class="small mt-1"><i class="bi bi-geo"></i> Titik masuk: {{ a.titik_nama or '—' }} · Berlaku: {{ a.berlaku_sampai|tgl if a.berlaku_sampai else 'tanpa batas' }} · Terakhir dipakai: {{ a.terakhir|tgl if a.terakhir else 'belum' }}</div>
+          <div class="small mt-1">{% if a.link_asal %}<i class="bi bi-link-45deg" style="color:var(--ft-mint)"></i> Tautan balik: <a href="{{ a.link_asal }}" target="_blank" rel="noopener">{{ a.link_asal }}</a>
+            {% else %}<i class="bi bi-link-45deg ft-muted"></i> <span class="ft-muted">Belum ada tautan balik ke silsilah asal.</span>{% endif %}</div>
+          {% if not a.link_asal and a.titik_id %}
+          <form method="post" action="{{ url_for('admin_tamu_tautan', aid=a.id) }}" class="d-flex gap-2 mt-2">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <input name="link_asal" type="url" inputmode="url" class="form-control form-control-sm" value="{{ tebak_link(a.asal) }}" placeholder="https://… link silsilah asal" required>
+            <button class="btn btn-soft btn-sm text-nowrap"><i class="bi bi-link-45deg"></i> Pasang tautan balik</button>
+          </form>
+          {% endif %}
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            {% set link = url_for('tamu_masuk', token=a.token, _external=True) ~ ('?ke=' ~ a.titik_id if a.titik_id else '') %}
+            <button class="btn btn-soft btn-sm" data-copy="{{ link }}"><i class="bi bi-clipboard"></i> Salin link</button>
+            <form method="post" action="{{ url_for('admin_tamu_aksi', aid=a.id, aksi='cabut' if a.aktif else 'aktifkan') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <button class="btn btn-ghost btn-sm {{ 'text-danger' if a.aktif }}">{{ 'Cabut akses' if a.aktif else 'Aktifkan lagi' }}</button></form>
+          </div>
+        </div>
+        {% else %}
+        <div class="ft-muted small">Belum ada akses tamu.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

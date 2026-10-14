@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, nama with context %}
+{% from "_cerita.html" import ornamen, sampul_bg, statbar with context %}
+{% block title %}Jelajah{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:980px">
+  <div class="welcome mb-4 fade-up">
+    <div class="d-flex flex-wrap align-items-center gap-4 position-relative" style="z-index:1">
+      <div class="feature-icon sky" style="width:64px;height:64px;font-size:1.8rem"><i class="bi bi-compass"></i></div>
+      <div class="flex-grow-1">
+        <div class="opacity-75 small fw-semibold">Selamat datang, penjelajah</div>
+        <h2 class="mb-1">{{ me.nama }}</h2>
+        <p class="mb-0 opacity-75">Anda tamu{% if a and a.asal %} dari <b>{{ a.asal }}</b>{% endif %} di <b>{{ APP_NAME }}</b>. Silakan menjelajah {{ jumlah }} anggota keluarga yang terhubung dengan titik masuk Anda — hanya untuk dilihat.</p>
+      </div>
+    </div>
+  </div>
+
+  {% if titik %}
+  <div class="ft-card p-4 mb-4 fade-up d1">
+    <div class="k-label text-start mb-2">Titik masuk Anda</div>
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      {{ avatar(titik, 72) }}
+      <div class="flex-grow-1 min-w-0">
+        <h4 class="mb-0">{{ nama(titik) }}</h4>
+        <div class="small ft-muted">{{ ringkas(titik.id) or '' }}</div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('anggota_detail', pid=titik.id) }}" class="btn btn-primary btn-sm"><i class="bi bi-person me-1"></i>Profil</a>
+        <a href="{{ url_for('pohon', pid=titik.id, mode='leluhur') }}" class="btn btn-soft btn-sm"><i class="bi bi-arrow-up me-1"></i>Leluhur</a>
+        <a href="{{ url_for('pohon', pid=titik.id) }}" class="btn btn-soft btn-sm"><i class="bi bi-arrow-down me-1"></i>Keturunan</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% for it in cerita %}{% set k = it.k %}
+  <a href="{{ url_for('keluarga_lihat', kid=k.id) }}" class="k-tile mb-3 fade-up d2" style="display:grid;grid-template-columns:minmax(0,1fr)">
+    <div class="k-tile-cover {{ 'has-cover' if k.sampul }}" style="{{ sampul_bg(k) }}">
+      <div class="small" style="letter-spacing:.2em;text-transform:uppercase;opacity:.85">Mukadimah Silsilah</div>
+      <div class="k-tile-title">{{ k.judul }}</div>
+      {% if k.tagline %}<div class="k-tile-asal fst-italic">{{ k.tagline }}</div>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+
+  <div class="ft-card p-4 fade-up d3" style="background:var(--ft-sky-soft);border-color:transparent">
+    <div class="d-flex gap-3"><i class="bi bi-shield-lock fs-4" style="color:var(--ft-sky)"></i>
+      <div class="small"><b>Tentang akses tamu</b><br>Anda bisa melihat profil, pohon, cerita, dan menelusuri hubungan. Kontak (WA & alamat) tidak ditampilkan, dan data tidak bisa diubah. Akses ini diberikan oleh admin dan dapat berakhir sewaktu-waktu.</div></div>
+  </div>
+</div>
+{% endblock %}

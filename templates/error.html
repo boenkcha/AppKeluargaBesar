@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ code }}{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="ft-card auth-card text-center">
+    <div class="status-emoji mb-3">🍃</div>
+    <h3>Ups, ada yang tersesat</h3>
+    <p class="ft-muted">{{ pesan }}</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Kembali ke beranda</a>
+  </div>
+</div>
+{% endblock %}

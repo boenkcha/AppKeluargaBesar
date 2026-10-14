@@ -1,0 +1,83 @@
+{% from "_macros.html" import avatar with context %}
+
+{# Jendela kirim ucapan: satu untuk semua tombol "Kirim ucapan" (data-ucap-url, data-ucap-nama, data-ucap-ke) #}
+{% macro modal_ucapan(STIKER) -%}
+<div class="modal fade" id="ucapModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="post" class="modal-content ucap-modal" id="ucapForm">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <div class="ucap-head">
+        <div class="ucap-emoji" id="ucapEmoji">🎂</div>
+        <div><div class="k-eyebrow dark" style="letter-spacing:.2em">Ucapan ulang tahun</div>
+          <h5 class="mb-0" id="ucapJudul">Untuk …</h5>
+          <div class="small ft-muted" id="ucapSub"></div></div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Tutup"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <label class="form-label">Pilih stiker</label>
+        <div class="stiker-pilih">
+          {% for s in STIKER %}<label><input type="radio" name="stiker" value="{{ s }}" {{ 'checked' if loop.first }}><span>{{ s }}</span></label>{% endfor %}
+        </div>
+        <label class="form-label mt-3">Ucapan Anda</label>
+        <textarea name="pesan" rows="4" maxlength="600" class="form-control" required placeholder="Selamat ulang tahun! Semoga sehat, bahagia, dan selalu dalam lindungan-Nya…"></textarea>
+        <div class="form-hint"><i class="bi bi-gift"></i> Ucapan dirahasiakan dan baru terbuka sebagai kejutan di hari ulang tahunnya.</div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary px-4"><i class="bi bi-send-heart me-1"></i>Kirim ucapan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{%- endmacro %}
+
+{# Layar kejutan untuk yang berulang tahun #}
+{% macro kejutan_layar(kj, my, fam) -%}
+{%- set ke = kj.info.ke -%}
+<div class="kejutan" id="kejutan" data-auto="{{ 1 if kj.buka else 0 }}" data-baca="{{ url_for('ucapan_baca') }}" data-csrf="{{ csrf_token() }}" hidden>
+  <div class="kej-balon" aria-hidden="true">
+    {% for i in range(9) %}<span class="balon b{{ i % 5 }}" style="--x:{{ (i * 11 + 4) % 96 }}%;--d:{{ (i * 0.7) % 4 }}s;--t:{{ 9 + (i * 1.3) % 5 }}s"></span>{% endfor %}
+  </div>
+  <div class="kej-konfeti" id="konfeti" aria-hidden="true"></div>
+  <button type="button" class="kej-tutup" data-kej-tutup aria-label="Tutup"><i class="bi bi-x-lg"></i></button>
+  <div class="kej-isi">
+    <div class="kej-eyebrow">✨ Hari istimewamu ✨</div>
+    <h1 class="kej-judul">Selamat Ulang Tahun</h1>
+    <div class="kej-ke">ke-<b>{{ ke }}</b></div>
+    <div class="kej-nama">{{ my.nama.split(',')[0] }}</div>
+
+    <div class="kue" id="kue" aria-hidden="true">
+      <div class="lilin-baris">
+        {% for i in range([ke, 7]|min if ke > 0 else 1) %}<span class="lilin c{{ i % 4 }}"><i class="api"></i><i class="asap"></i></span>{% endfor %}
+      </div>
+      <div class="kue-atas"><span class="kue-angka">{{ ke }}</span></div>
+      <div class="kue-bawah"></div>
+      <div class="kue-piring"></div>
+    </div>
+
+    <button type="button" class="btn btn-lg kej-tiup" id="tiupLilin">🎂 Tiup lilin</button>
+    <div class="kej-hint" id="kejHint">Buat permohonan, lalu tiup lilinnya…</div>
+
+    <div class="kej-kartu" id="kejKartu" hidden>
+      {% if kj.ucapan %}
+      <div class="kej-sub">{{ kj.ucapan|length }} ucapan dari keluarga tercinta</div>
+      <div class="kartu-geser">
+        {% for c in kj.ucapan %}
+        <div class="kartu-ucap" style="--i:{{ loop.index0 }}">
+          <div class="kartu-stiker">{{ c.stiker or '🎂' }}</div>
+          <div class="kartu-pesan">{{ c.pesan }}</div>
+          <div class="kartu-dari">— {{ c.oleh or 'Keluarga' }}{% if c.oleh_pid in fam.people %}{% set rr = fam.relation(c.oleh_pid, my.id) %}{% if rr.ab %}, <span>{{ rr.ab.label|lower }}</span>{% endif %}{% endif %}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="kartu-ucap tunggal"><div class="kartu-stiker">💐</div>
+        <div class="kartu-pesan">Keluarga besar mendoakan kesehatan, kebahagiaan, dan keberkahan untukmu di usia yang baru.</div>
+        <div class="kartu-dari">— {{ APP_NAME }}</div></div>
+      {% endif %}
+      <button type="button" class="btn btn-light mt-3 px-4" data-kej-tutup>Terima kasih 🤍</button>
+    </div>
+  </div>
+</div>
+{%- endmacro %}

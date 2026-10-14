@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar with context %}
+{% block title %}Admin{% endblock %}
+{% macro aksi(u, act, label, cls='btn-ghost', confirm=None) -%}
+<form method="post" action="{{ url_for('admin_aksi', uid=u.id, aksi=act) }}" class="d-inline" {% if confirm %}data-confirm="{{ confirm }}"{% endif %}>
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm {{ cls }}">{{ label|safe }}</button>
+</form>
+{%- endmacro %}
+{% block content %}
+<div class="container py-4">
+  <div class="mb-4 fade-up">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <h2 class="mb-1">Ruang admin</h2>
+      <a href="{{ url_for('admin_tamu') }}" class="btn btn-soft btn-sm"><i class="bi bi-compass me-1"></i>Akses Tamu{% if minta_tamu %} <span class="badge rounded-pill text-bg-warning">{{ minta_tamu }}</span>{% endif %}</a>
+    </div>
+    <p class="ft-muted mb-0">Tinjau dengan bijak — setiap persetujuan membuka pintu bagi anggota keluarga untuk melihat data kerabatnya.</p>
+  </div>
+
+  {% if last_link %}
+  <div class="ft-card p-4 mb-4 fade-up" style="border-color:var(--ft-accent)">
+    <h6 class="mb-1"><i class="bi bi-link-45deg me-1"></i>Tautan aktivasi untuk {{ last_link.nama }}</h6>
+    <p class="small ft-muted">Email otomatis belum aktif (SMTP belum diatur). Kirimkan tautan ini secara pribadi, misalnya lewat WhatsApp.</p>
+    <div class="link-box mb-2">{{ last_link.link }}</div>
+    <button class="btn btn-soft btn-sm" data-copy="{{ last_link.link }}"><i class="bi bi-clipboard"></i> Salin tautan</button>
+  </div>
+  {% endif %}
+
+  <div class="ft-card p-4 mb-4 fade-up d1">
+    <div class="d-flex align-items-center gap-2 mb-3"><h5 class="mb-0">Menunggu persetujuan</h5><span class="chip chip-accent">{{ groups.pending|length }}</span></div>
+    {% if groups.pending %}
+    <div class="row g-3">
+      {% for u in groups.pending %}
+      <div class="col-md-6">
+        <div class="p-3 rounded-4 h-100 d-flex flex-column" style="background:var(--ft-surface-2)">
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <span class="avatar" style="--s:44px;--h:{{ hue(u.id) }}">{{ initials(u.nama) }}</span>
+            <div class="min-w-0"><div class="fw-bold">{{ u.nama }}</div><div class="small ft-muted text-truncate">{{ u.email }} · {{ u.created_at|tgl }}</div></div>
+          </div>
+          <div class="small mb-3 flex-grow-1"><i class="bi bi-chat-quote ft-muted"></i> {{ u.catatan_daftar or 'Tidak menyertakan catatan.' }}</div>
+          <div class="d-flex gap-2">
+            {{ aksi(u, 'setujui', '<i class="bi bi-check2"></i> Setujui', 'btn-primary') }}
+            {{ aksi(u, 'tolak', 'Tolak', 'btn-ghost', 'Tolak pendaftaran ' ~ u.nama ~ '? Pengguna akan menerima pesan yang sopan.') }}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="ft-muted small"><i class="bi bi-check2-all"></i> Semua sudah ditinjau. Terima kasih!</div>
+    {% endif %}
+  </div>
+
+  <div class="ft-card p-4 mb-4 fade-up d2">
+    <div class="d-flex align-items-center gap-2 mb-1"><h5 class="mb-0">Kemungkinan data ganda</h5><span class="chip chip-sky">{{ dupes|length }}</span></div>
+    <p class="small ft-muted mb-3">Dideteksi dari kemiripan nama (gelar & ejaan lama diabaikan) serta kecocokan orang tua, pasangan, anak, dan tahun lahir. Menggabungkan akan menyambung cabang-cabang pohon yang terpisah.</p>
+    {% for d in dupes %}{% set a, b = fam.get(d.a), fam.get(d.b) %}
+    <div class="dupe-row">
+      {% for x in (a, b) %}
+      <a href="{{ url_for('anggota_detail', pid=x.id) }}" class="rel-item flex-grow-1" style="min-width:0;flex-basis:0">{{ avatar(x, 40, false) }}
+        <div class="min-w-0"><div class="fw-semibold text-truncate">{{ x.nama }}</div><div class="r text-truncate">{{ ringkas(x.id) or 'Belum ada data keluarga' }}</div></div></a>
+      {% if loop.first %}<div class="text-center px-2"><span class="chip chip-accent">{{ (d.score * 100)|round|int }}%</span></div>{% endif %}
+      {% endfor %}
+      <div class="w-100 d-flex flex-wrap gap-2 align-items-center mt-1">
+        {% for r in d.reasons %}<span class="chip">{{ r }}</span>{% endfor %}
+        <span class="flex-grow-1"></span>
+        {% for keep, drop in ((a, b), (b, a)) %}
+        <form method="post" action="{{ url_for('admin_gabung') }}" data-confirm="Gabungkan “{{ drop.nama }}” ke “{{ keep.nama }}”? Relasi dipindahkan, data kosong dilengkapi, lalu “{{ drop.nama }}” dihapus.">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="simpan" value="{{ keep.id }}"><input type="hidden" name="hapus" value="{{ drop.id }}">
+          <button class="btn btn-sm {{ 'btn-soft' if loop.first else 'btn-ghost' }}">Simpan “{{ keep.nama.split()[0] }}” <span class="ft-muted">#{{ keep.id }}</span></button>
+        </form>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="ft-muted small"><i class="bi bi-check2-all"></i> Tidak ada data yang terdeteksi ganda.</div>
+    {% endfor %}
+  </div>
+
+  <div class="ft-card p-4 mb-4 fade-up d2">
+    <h5 class="mb-3"><i class="bi bi-people-fill me-1" style="color:var(--ft-primary)"></i>Peran & jangkauan pengelolaan</h5>
+    <div class="row g-3">
+      {% for k, lbl in PERAN.items() %}
+      <div class="col-md-4"><div class="p-3 rounded-4 h-100" style="background:var(--ft-surface-2)">
+        <span class="chip peran-{{ k }} mb-2">{{ lbl }}</span>
+        <div class="small">{{ PERAN_DESKRIPSI[k] }}</div></div></div>
+      {% endfor %}
+    </div>
+    <p class="small ft-muted mt-3 mb-0"><i class="bi bi-info-circle"></i> Di luar jangkauannya, pengguna tetap bisa mengirim usulan perubahan. Data milik akun hanya diubah pemiliknya; bila data sudah dikelola kerabat yang lebih dekat, yang lebih jauh mengirim usulan. Admin dapat mengelola semua data.</p>
+  </div>
+
+  <div class="ft-card p-4 fade-up d3">
+    <h5 class="mb-3">Semua akun</h5>
+    <div class="table-responsive">
+      <table class="table align-middle small table-cards">
+        <thead><tr class="ft-muted"><th>Nama</th><th>Status</th><th>Profil silsilah</th><th>Login terakhir</th><th class="text-end">Aksi</th></tr></thead>
+        <tbody>
+        {% for key in ['approved', 'active', 'rejected', 'disabled'] %}{% for u in groups[key] %}
+          <tr>
+            <td><div class="fw-semibold">{{ u.nama }} {% if u.is_admin %}<span class="chip chip-primary ms-1">admin</span>{% else %}<span class="chip peran-{{ u.peran or 'anggota' }} ms-1">{{ PERAN[u.peran or 'anggota'] }}</span>{% endif %}</div><div class="ft-muted">{{ u.email }}</div></td>
+            <td data-label="Status">{% set st = {'approved':('chip-accent','Menunggu aktivasi'),'active':('chip-primary','Aktif'),'rejected':('','Ditolak'),'disabled':('chip-rose','Nonaktif')}[u.status] %}<span class="chip {{ st[0] }}">{{ st[1] }}</span></td>
+            <td data-label="Profil silsilah">{% if u.person_id %}<a href="{{ url_for('anggota_detail', pid=u.person_id) }}">{{ u.person_nama }}</a>{% else %}<span class="ft-muted">Belum diisi</span>{% endif %}</td>
+            <td data-label="Login terakhir">{{ u.last_login|tgl }}</td>
+            <td class="text-end text-nowrap">
+              {% if u.status == 'active' and not u.is_admin %}
+              <form method="post" action="{{ url_for('admin_aksi', uid=u.id, aksi='peran') }}" class="d-inline-flex align-items-center gap-1">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <select name="peran" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()" title="Peran">
+                  {% for k, lbl in PERAN.items() %}<option value="{{ k }}" {{ 'selected' if (u.peran or 'anggota') == k }}>{{ lbl }}</option>{% endfor %}
+                </select>
+              </form>
+              {% endif %}
+              {% if u.status == 'approved' %}{{ aksi(u, 'kirim-ulang', '<i class="bi bi-envelope"></i> Kirim ulang') }}{% endif %}
+              {% if u.status == 'rejected' %}{{ aksi(u, 'setujui', 'Setujui') }}{% endif %}
+              {% if u.id != me.id %}
+                {% if u.status == 'active' %}{{ aksi(u, 'nonaktifkan', 'Nonaktifkan', 'btn-ghost', 'Nonaktifkan akun ' ~ u.nama ~ '?') }}{% endif %}
+                {% if u.status == 'disabled' %}{{ aksi(u, 'aktifkan', 'Aktifkan') }}{% endif %}
+                {% if u.status == 'active' %}{% if u.is_admin %}{{ aksi(u, 'cabut-admin', 'Cabut admin') }}{% else %}{{ aksi(u, 'jadikan-admin', 'Jadikan admin') }}{% endif %}{% endif %}
+                {{ aksi(u, 'hapus', '<i class="bi bi-trash3"></i>', 'btn-ghost text-danger', 'Hapus akun ' ~ u.nama ~ '? Data silsilahnya tetap tersimpan.') }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

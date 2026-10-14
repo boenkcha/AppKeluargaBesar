@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Masuk{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="ft-card auth-card fade-up">
+    <div class="text-center mb-4">
+      <div class="feature-icon mx-auto mb-3"><i class="bi bi-house-heart"></i></div>
+      <h3 class="mb-1">Selamat datang kembali</h3>
+      <p class="ft-muted small mb-0">Keluarga menanti kabar Anda.</p>
+    </div>
+    <form method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <div class="input-icon"><i class="bi bi-envelope"></i><input type="email" name="email" class="form-control" value="{{ email }}" required autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" placeholder="nama@email.com"></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Kata sandi</label>
+        <div class="input-icon"><i class="bi bi-lock"></i><input type="password" name="password" class="form-control" required autocomplete="current-password" enterkeyhint="go" placeholder="Kata sandi"></div>
+      </div>
+      <div class="form-check mb-4">
+        <input class="form-check-input" type="checkbox" name="ingat" id="ingat" checked>
+        <label class="form-check-label small" for="ingat">Ingat saya di perangkat ini</label>
+      </div>
+      <button class="btn btn-primary w-100 py-2">Masuk</button>
+    </form>
+    <p class="text-center small ft-muted mt-4 mb-0">Belum bergabung? <a href="{{ url_for('daftar') }}" class="fw-semibold">Daftar di sini</a><br>Lupa kata sandi? Hubungi admin keluarga.</p>
+  </div>
+</div>
+{% endblock %}

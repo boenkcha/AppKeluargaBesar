@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Silsilah Keluarga{% endblock %}
+{% block content %}
+<section class="hero container">
+  <div class="row align-items-center g-4 g-lg-5">
+    <div class="col-lg-6 fade-up">
+      <span class="chip chip-primary mb-3"><i class="bi bi-stars"></i> Ruang keluarga yang hangat & privat</span>
+      <h1 class="mb-3">Kenali akar,<br><span class="grad-text">rajut kembali ikatan</span> keluarga.</h1>
+      <p class="lead ft-muted mb-4">Catat kisah setiap anggota keluarga, telusuri asal-usul hingga buyut dan canggah, dan temukan bagaimana Anda terhubung dengan saudara yang baru dikenal.</p>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('daftar') }}" class="btn btn-primary btn-lg px-4">Bergabung dengan keluarga <i class="bi bi-arrow-right ms-1"></i></a>
+        <a href="{{ url_for('masuk') }}" class="btn btn-ghost btn-lg px-4">Saya sudah punya akun</a>
+      </div>
+      <div class="d-flex gap-4 mt-4 ft-muted small">
+        <span><b class="fs-5 text-body">{{ stats.anggota }}</b> anggota tercatat</span>
+        <span><b class="fs-5 text-body">{{ stats.akun }}</b> keluarga bergabung</span>
+      </div>
+    </div>
+    <div class="col-lg-6 fade-up d2">
+      <div class="hero-art">
+        <svg viewBox="0 0 400 400" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9acf5"/><stop offset="1" stop-color="#d9d0ff"/></linearGradient>
+            <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7b48f"/><stop offset="1" stop-color="#ffd9c2"/></linearGradient>
+            <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3a6c0"/><stop offset="1" stop-color="#ffd6e4"/></linearGradient>
+          </defs>
+          <circle cx="200" cy="200" r="180" fill="#efeaff"/>
+          <circle cx="250" cy="250" r="120" fill="#e2f6ec" opacity=".8"/>
+          <circle cx="120" cy="140" r="80" fill="#ffece2" opacity=".8"/>
+          <g stroke="var(--ft-line)" stroke-width="3" stroke-linecap="round">
+            <path d="M200 92 V150 M110 150 H290 M110 150 V205 M290 150 V205 M110 250 V290 M70 290 H150 M70 290 V318 M150 290 V318 M290 250 V318"/>
+          </g>
+          <g class="float"><circle cx="200" cy="70" r="30" fill="url(#g2)"/><text x="200" y="78" text-anchor="middle" font-size="22" fill="#fff">👴</text></g>
+          <g class="float d2"><circle cx="110" cy="228" r="26" fill="url(#g1)"/><text x="110" y="236" text-anchor="middle" font-size="20" fill="#fff">👨</text></g>
+          <g class="float d3"><circle cx="290" cy="228" r="26" fill="url(#g3)"/><text x="290" y="236" text-anchor="middle" font-size="20" fill="#fff">👩</text></g>
+          <g class="float"><circle cx="70" cy="340" r="22" fill="url(#g3)"/><text x="70" y="347" text-anchor="middle" font-size="17">👧</text></g>
+          <g class="float d2"><circle cx="150" cy="340" r="22" fill="url(#g1)"/><text x="150" y="347" text-anchor="middle" font-size="17">👦</text></g>
+          <g class="float d3"><circle cx="290" cy="340" r="22" fill="url(#g2)"/><text x="290" y="347" text-anchor="middle" font-size="17">🧒</text></g>
+          <g transform="translate(160 300)"><rect x="0" y="0" width="80" height="30" rx="15" fill="var(--ft-surface)" stroke="var(--ft-border)"/><text x="40" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ft-primary)">Sepupu</text></g>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="container pb-5">
+  <div class="row g-3">
+    {% for ic, cls, judul, isi in [
+      ('person-vcard', '', 'Profil yang personal', 'Nama, pekerjaan, alamat, WA, orang tua, dan foto — lengkapi pelan-pelan, sesuai kenyamanan Anda.'),
+      ('diagram-3', 'accent', 'Pohon yang hidup', 'Lihat garis leluhur ke atas dan keturunan ke bawah dalam pohon interaktif yang bisa digeser dan diperbesar.'),
+      ('arrow-left-right', 'rose', 'Telusuri hubungan', 'Pilih dua orang, kami tunjukkan jalurnya: sepupu, paman, ipar, mertua — lengkap dengan leluhur bersamanya.'),
+      ('shield-lock', 'mint', 'Aman & terverifikasi', 'Setiap pendaftar ditinjau admin keluarga. Kontak bisa disembunyikan kapan pun Anda mau.')] %}
+    <div class="col-md-6 col-lg-3 fade-up d{{ loop.index0 }}">
+      <div class="ft-card ft-card-hover p-4 h-100">
+        <div class="feature-icon {{ cls }} mb-3"><i class="bi bi-{{ ic }}"></i></div>
+        <h5>{{ judul }}</h5>
+        <p class="ft-muted mb-0 small">{{ isi }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="ft-card p-4 p-lg-5 mt-4 text-center" style="background:linear-gradient(120deg,#efeaff,#fde7ef 50%,#ffece2);border-color:#fff">
+    <h3 class="mb-2">“Keluarga adalah tempat kita berasal, dan tempat kita selalu pulang.”</h3>
+    <p class="ft-muted mb-4">Setiap nama yang Anda catat hari ini adalah jembatan bagi anak-cucu untuk mengenal asal-usulnya.</p>
+    <a href="{{ url_for('daftar') }}" class="btn btn-accent btn-lg px-4">Mulai sekarang — gratis</a>
+  </div>
+</section>
+{% endblock %}

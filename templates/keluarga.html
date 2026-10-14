@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, nama with context %}
+{% from "_cerita.html" import ornamen, sampul_bg, pasangan_leluhur, statbar with context %}
+{% block title %}{{ k.judul }}{% endblock %}
+{% block content %}
+<div class="cerita-page">
+  <header class="k-hero {{ 'has-cover' if k.sampul }}" style="{{ sampul_bg(k) }}">
+    <div class="k-hero-inner container">
+      <div class="k-eyebrow">Mukadimah Silsilah</div>
+      <h1 class="k-title">{{ k.judul }}</h1>
+      {% if k.tagline %}<p class="k-tagline">{{ k.tagline }}</p>{% endif %}
+      {{ ornamen('light') }}
+      <div class="d-flex flex-wrap justify-content-center gap-2">
+        {% if k.asal %}<div class="k-asal"><i class="bi bi-geo-alt"></i> Berasal dari {{ k.asal }}</div>{% endif %}
+        {% if posisi %}<div class="k-asal"><i class="bi bi-person-heart"></i> {{ posisi.label }}</div>{% endif %}
+      </div>
+    </div>
+  </header>
+
+  <div class="container k-body">
+    <section class="k-meta fade-up">
+      {% if posisi %}<div class="k-meta-item"><i class="bi bi-person-heart"></i><div><span>Posisi Anda</span>{{ posisi.kalimat }}</div></div>{% endif %}
+      {% for ind in induk %}<a class="k-meta-item" href="{{ url_for('keluarga_lihat', kid=ind.id) }}"><i class="bi bi-arrow-90deg-up"></i><div><span>Cabang dari</span>{{ ind.judul }}</div></a>{% endfor %}
+      {% if penjaga %}<div class="k-meta-item"><i class="bi bi-shield-check"></i><div><span>Penjaga cerita</span>{{ penjaga.nama }}{% if penjaga_rel %} · {{ penjaga_rel }} leluhur{% endif %}</div></div>{% endif %}
+    </section>
+
+    {% if k.leluhur_id and fam.get(k.leluhur_id) %}
+    <section class="k-card k-leluhur fade-up">
+      <div class="k-label">Pasangan leluhur</div>
+      {{ pasangan_leluhur(fam, k.leluhur_id, 92) }}
+      {{ statbar(stats) }}
+    </section>
+    {% endif %}
+
+    {% if k.mukadimah %}
+    <section class="k-mukadimah fade-up d1">
+      <h2 class="k-h">Mukadimah</h2>
+      {{ ornamen() }}
+      <div class="k-prose dropcap">{{ k.mukadimah|cerita }}</div>
+    </section>
+    {% endif %}
+
+    {% if k.kutipan %}
+    <figure class="k-quote fade-up d1">
+      <i class="bi bi-quote"></i>
+      <blockquote>{{ k.kutipan }}</blockquote>
+      {% if k.kutipan_oleh %}<figcaption>— {{ k.kutipan_oleh }}</figcaption>{% endif %}
+    </figure>
+    {% endif %}
+
+    {% if stats and stats.cabang %}
+    <section class="fade-up d2">
+      <h2 class="k-h text-center">Cabang Keluarga</h2>
+      {{ ornamen() }}
+      <div class="row g-3 mt-1">
+        {% for c in stats.cabang %}{% set ch = fam.get(c.id) %}
+        <div class="col-sm-6 col-lg-4">
+          <a href="{{ url_for('pohon', pid=c.id) }}" class="k-branch">
+            <div class="k-branch-no">{{ loop.index }}</div>
+            <div class="d-flex align-items-center gap-2">
+              {{ avatar(ch, 46) }}
+              {% for m in c.spouses[:1] %}<span class="amp">&amp;</span>{{ avatar(fam.get(m.spouse), 38) }}{% endfor %}
+            </div>
+            <div class="fw-bold mt-2">{{ nama(ch) }}</div>
+            {% for m in c.spouses[:1] %}<div class="small ft-muted">bersama {{ fam.get(m.spouse).nama }}</div>{% endfor %}
+            <div class="k-branch-count"><i class="bi bi-diagram-3"></i> {{ c.keturunan }} keturunan</div>
+            {% for r in per_anak.get(c.id, []) %}<div class="k-branch-story" data-href="{{ url_for('keluarga_lihat', kid=r.id) }}"><i class="bi bi-book"></i> Cerita cabang: {{ r.judul }}</div>{% endfor %}
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if cabang_cerita %}
+    <section class="fade-up d2">
+      <h2 class="k-h text-center">Cerita Cabang</h2>
+      {{ ornamen() }}
+      <div class="row g-3 mt-1">
+        {% for r in cabang_cerita %}
+        <div class="col-md-6"><a href="{{ url_for('keluarga_lihat', kid=r.id) }}" class="k-substory">
+          <div class="k-substory-title">{{ r.judul }}</div>
+          {% if r.tagline %}<div class="small fst-italic ft-muted">“{{ r.tagline }}”</div>{% endif %}
+          {% if fam.get(r.leluhur_id) %}<div class="small mt-1"><i class="bi bi-person"></i> Leluhur: {{ fam.get(r.leluhur_id).nama }}</div>{% endif %}
+        </a></div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if tonggak %}
+    <section class="k-card fade-up d2">
+      <h2 class="k-h text-center">Tonggak Sejarah</h2>
+      {{ ornamen() }}
+      <ol class="k-timeline">
+        {% for th, isi in tonggak %}<li><span class="yr">{{ th or '•' }}</span><span class="txt">{{ isi }}</span></li>{% endfor %}
+      </ol>
+    </section>
+    {% endif %}
+
+    <div class="text-center my-5 fade-up d3">
+      {% if k.leluhur_id %}<a href="{{ url_for('pohon', pid=k.leluhur_id) }}" class="btn btn-primary btn-lg px-4"><i class="bi bi-diagram-3 me-1"></i>Lihat pohon keturunan</a>{% endif %}
+      <div class="small ft-muted mt-3">
+        {% if penulis %}Ditulis oleh {{ penulis.nama }} · {% endif %}{{ (k.updated_at or k.created_at)|tgl }}
+        {% if can_tulis_cerita(k) %} · <a href="{{ url_for('keluarga_ubah', kid=k.id) }}"><i class="bi bi-pencil"></i> Ubah cerita</a>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
