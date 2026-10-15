@@ -171,7 +171,7 @@
           </div>
           {% endif %}
           {{ picker('pasangan', 'Tambah suami / istri' if marr else 'Suami / Istri', '', id_val=v.pasangan_id, nama_val=v.pasangan_nama, fam=fam, exclude=person.id if person else '',
-                    hint=('Status cerai, tanggal menikah, dan pernikahan lain diatur di halaman profil.' if marr else 'Opsional. Ayah & ibu otomatis dicatat sebagai pasangan.'), predict=true) }}
+                    hint=(None if marr else 'Opsional. Ayah & ibu otomatis dicatat sebagai pasangan.'), predict=true) }}
         </div>
         {% if person and person.jenis_kelamin %}
         {% set slot = 'ibu_id' if person.jenis_kelamin == 'L' else 'ayah_id' %}
