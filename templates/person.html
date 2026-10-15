@@ -28,7 +28,8 @@
           {% else %}{{ avatar(p, 120) }}{% endif %}
           <div class="flex-grow-1 min-w-0">
             <div class="d-flex flex-wrap gap-2 mb-2">
-              {% if akun %}<span class="chip chip-primary"><i class="bi bi-patch-check-fill"></i> Anggota terverifikasi</span>{% endif %}
+              {% if akun and p.id == pendiri_pid() %}<span class="chip chip-emas"><i class="bi bi-star-fill"></i> Pendiri silsilah · terverifikasi</span>
+              {% elif akun %}<span class="chip chip-primary"><i class="bi bi-patch-check-fill"></i> Anggota terverifikasi</span>{% endif %}
               {% if p.wafat %}<span class="chip"><i class="bi bi-flower1"></i> Telah berpulang</span>{% endif %}
               {% if me.person_id == p.id %}<span class="chip chip-accent"><i class="bi bi-star-fill"></i> Ini Anda</span>{% endif %}
             </div>

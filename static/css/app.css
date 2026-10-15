@@ -1183,3 +1183,10 @@ body.kej-aktif { overflow: hidden; }
 .akses-grid b { font-size: 1.05rem; word-break: break-all; }
 .btn-wa { background: #25d366; color: #fff; border: 0; }
 .btn-wa:hover { background: #1ebe5b; color: #fff; }
+
+/* lencana bintang emas pendiri silsilah */
+.bintang-emas { background: linear-gradient(160deg, #fff3b0, #f3c94d 45%, #c9921f); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(150, 100, 10, .45)); }
+.chip.chip-emas { background: linear-gradient(135deg, #fff8dc, #fbe7a6); color: #7a5410; border: 1px solid #efd68a; box-shadow: 0 4px 12px -6px rgba(201,146,31,.6); }
+.chip.chip-emas i { background: linear-gradient(160deg, #fff3b0, #f3c94d 45%, #c9921f); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(150,100,10,.5)); }

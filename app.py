@@ -458,6 +458,15 @@ def user_peran(user=None):
 
 
 @app.template_global()
+def pendiri_pid():
+    """Data diri pendiri silsilah (akun pertama yang mendaftar) — mendapat lencana bintang emas."""
+    if "pendiri_pid" not in g:
+        r = get_db().execute("SELECT person_id FROM users WHERE is_admin=1 AND peran<>'tamu' ORDER BY id LIMIT 1").fetchone()
+        g.pendiri_pid = r["person_id"] if r else None
+    return g.pendiri_pid
+
+
+@app.template_global()
 def tautan_map():
     """{person_id: [{label, url}, ...]} untuk ikon 🔗 yang bisa diklik."""
     if "tautan_map" not in g:

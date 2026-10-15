@@ -36,7 +36,7 @@
       <a href="{{ url_for('anggota_detail', pid=p.id) }}" class="ft-card ft-card-hover member-card">
         {{ avatar(p, 56) }}
         <div class="min-w-0">
-          <div class="nm" title="{{ p.nama }}">{% if pekan_ultah(p) %}<span title="Pekan ulang tahun">🎂</span> {% endif %}{{ nama(p) }}{% if p.id in claimed %}&nbsp;<i class="bi bi-patch-check-fill small" style="color:var(--ft-primary)" title="Terverifikasi"></i>{% endif %}</div>
+          <div class="nm" title="{{ p.nama }}">{% if pekan_ultah(p) %}<span title="Pekan ulang tahun">🎂</span> {% endif %}{{ nama(p) }}{% if p.id == pendiri_pid() %}&nbsp;<i class="bi bi-star-fill bintang-emas small" title="Pendiri silsilah · terverifikasi"></i>{% elif p.id in claimed %}&nbsp;<i class="bi bi-patch-check-fill small" style="color:var(--ft-primary)" title="Terverifikasi"></i>{% endif %}</div>
           <div class="sub">{{ p.pekerjaan or (lahir(p) and 'Lahir ' ~ lahir(p)) or '—' }}</div>
           {% if ortu %}<div class="sub"><i class="bi bi-diagram-2"></i> {{ 'Putra' if p.jenis_kelamin == 'L' else 'Putri' if p.jenis_kelamin == 'P' else 'Anak' }} {% for x in ortu %}{{ fam.people[x].nama.split()[0] }}{{ ' & ' if not loop.last }}{% endfor %}</div>{% endif %}
         </div>
