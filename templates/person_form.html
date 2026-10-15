@@ -214,6 +214,11 @@
           <label class="form-label">Nomor WhatsApp</label>
           <div class="input-icon"><i class="bi bi-whatsapp"></i><input name="wa" type="tel" inputmode="tel" autocomplete="{{ 'tel' if is_profile else 'off' }}" enterkeyhint="next" class="form-control" value="{{ v.wa or '' }}" placeholder="08xxxxxxxxxx"></div>
         </div>
+        <div class="col-md-6" data-hide-wafat>
+          <label class="form-label">Email</label>
+          <div class="input-icon"><i class="bi bi-envelope"></i><input name="email" type="email" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="{{ 'email' if is_profile else 'off' }}" enterkeyhint="next" class="form-control" value="{{ v.email or '' }}" placeholder="nama@email.com"></div>
+          {% if not is_profile and me.is_admin %}<div class="form-hint">Dipakai admin untuk memberi akses akun tanpa perlu mendaftar.</div>{% endif %}
+        </div>
         <div class="col-12">
           <label class="form-label">Alamat / domisili</label>
           <textarea name="alamat" rows="2" autocomplete="{{ 'street-address' if is_profile else 'off' }}" autocapitalize="sentences" class="form-control" placeholder="Kota atau alamat lengkap — sesuai kenyamanan Anda">{{ v.alamat or '' }}</textarea>

@@ -1,0 +1,18 @@
+{# Panel kredensial akun baru / reset untuk admin: salin & kirim via WhatsApp #}
+{% macro panel_akses(a) -%}
+{%- set pesan = "Assalamu'alaikum / Halo " ~ a.nama.split(',')[0] ~ ",\n\nAkun " ~ APP_NAME ~ " Anda sudah " ~ ('direset' if a.reset else 'aktif') ~ ".\nEmail: " ~ a.email ~ "\nKata sandi sementara: " ~ a.sandi ~ "\n\nBuat kata sandi pribadi lewat link ini (berlaku 7 hari):\n" ~ a.link -%}
+<div class="ft-card p-4 mb-4 akses-panel" id="akses">
+  <h6 class="fw-bold mb-1"><i class="bi bi-key me-1"></i>{{ 'Kata sandi direset' if a.reset else 'Akun dibuat' }} untuk {{ a.nama }}</h6>
+  <p class="small ft-muted mb-3">{% if a.terkirim %}Rincian sudah dikirim ke <b>{{ a.email }}</b>. {% else %}Email belum terkirim (SMTP belum diatur) — {% endif %}Kata sandi sementara ini <b>hanya ditampilkan sekali</b>; anggota wajib menggantinya saat pertama masuk.</p>
+  <div class="akses-grid">
+    <div><span>Email</span><b>{{ a.email }}</b></div>
+    <div><span>Kata sandi sementara</span><b class="font-monospace">{{ a.sandi }}</b></div>
+  </div>
+  <div class="small fw-semibold mt-3 mb-1">Link buat kata sandi (7 hari)</div>
+  <div class="link-box mb-3">{{ a.link }}</div>
+  <div class="d-flex flex-wrap gap-2">
+    <button class="btn btn-soft btn-sm" data-copy="{{ pesan }}"><i class="bi bi-clipboard"></i> Salin pesan</button>
+    {% if a.wa %}<a class="btn btn-sm btn-wa" target="_blank" rel="noopener" href="{{ a.wa }}?text={{ pesan|urlencode }}"><i class="bi bi-whatsapp"></i> Kirim via WhatsApp</a>{% endif %}
+  </div>
+</div>
+{%- endmacro %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_akses.html" import panel_akses with context %}
 {% from "_macros.html" import avatar with context %}
 {% block title %}Admin{% endblock %}
 {% macro aksi(u, act, label, cls='btn-ghost', confirm=None) -%}
@@ -16,6 +17,7 @@
     <p class="ft-muted mb-0">Tinjau dengan bijak — setiap persetujuan membuka pintu bagi anggota keluarga untuk melihat data kerabatnya.</p>
   </div>
 
+  {% if akses_baru %}{{ panel_akses(akses_baru) }}{% endif %}
   {% if last_link %}
   <div class="ft-card p-4 mb-4 fade-up" style="border-color:var(--ft-accent)">
     <h6 class="mb-1"><i class="bi bi-link-45deg me-1"></i>Tautan aktivasi untuk {{ last_link.nama }}</h6>
@@ -115,6 +117,7 @@
                 {% if u.status == 'active' %}{{ aksi(u, 'nonaktifkan', 'Nonaktifkan', 'btn-ghost', 'Nonaktifkan akun ' ~ u.nama ~ '?') }}{% endif %}
                 {% if u.status == 'disabled' %}{{ aksi(u, 'aktifkan', 'Aktifkan') }}{% endif %}
                 {% if u.status == 'active' %}{% if u.is_admin %}{{ aksi(u, 'cabut-admin', 'Cabut admin') }}{% else %}{{ aksi(u, 'jadikan-admin', 'Jadikan admin') }}{% endif %}{% endif %}
+                {% if u.status == 'active' %}<form method="post" action="{{ url_for('reset_sandi', uid=u.id) }}" class="d-inline" data-confirm="Reset kata sandi {{ u.nama }}?"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-ghost" title="Reset kata sandi"><i class="bi bi-key"></i> Reset sandi</button></form>{% endif %}
                 {{ aksi(u, 'hapus', '<i class="bi bi-trash3"></i>', 'btn-ghost text-danger', 'Hapus akun ' ~ u.nama ~ '? Data silsilahnya tetap tersimpan.') }}
               {% endif %}
             </td>

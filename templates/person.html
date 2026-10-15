@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import avatar, nama, picker, karangan, kelopak, bendera, topi_pesta with context %}
 {% from "_ultah.html" import modal_ucapan with context %}
+{% from "_akses.html" import panel_akses with context %}
 {% block title %}{{ p.nama }}{% endblock %}
 {% block content %}
 {% set pct, missing = completeness(p) %}
@@ -313,6 +314,7 @@
             {% if p.wa %}<a href="{{ wa_link(p.wa) }}" target="_blank" rel="noopener">{{ p.wa }}</a>{% else %}—{% endif %}</div>
             {% if p.wa %}<a href="{{ wa_link(p.wa) }}" target="_blank" rel="noopener" class="btn btn-soft btn-sm align-self-center">Sapa</a>{% endif %}</div>
           {% endif %}
+          {% if not p.wafat %}<div class="info-row"><i class="bi bi-envelope"></i><div class="min-w-0"><div class="k">Email</div>{% if p.email %}<a href="mailto:{{ p.email }}" class="text-break">{{ p.email }}</a>{% else %}—{% endif %}</div></div>{% endif %}
           <div class="info-row"><i class="bi bi-geo-alt"></i><div><div class="k">Alamat</div><span style="white-space:pre-line">{{ p.alamat or '—' }}</span></div></div>
           {% if not p.tampil_kontak %}<div class="small ft-muted mt-2"><i class="bi bi-eye-slash"></i> Kontak disembunyikan dari anggota lain.</div>{% endif %}
         {% else %}
@@ -325,6 +327,35 @@
         <div class="d-flex justify-content-between small fw-semibold mb-2"><span>Kelengkapan data</span><span>{{ pct }}%</span></div>
         <div class="ft-progress mb-3"><div style="width:{{ pct }}%"></div></div>
         <div class="small ft-muted">Bisa dilengkapi: {{ missing|join(', ')|lower }}.</div>
+      </div>
+      {% endif %}
+
+      {% if me.is_admin and not is_tamu() and not p.wafat %}
+      {% if akses_baru %}{{ panel_akses(akses_baru) }}{% endif %}
+      <div class="ft-card p-4 fade-up d2" id="akses-akun">
+        <h6 class="fw-bold mb-2"><i class="bi bi-person-lock me-1" style="color:var(--ft-primary)"></i>Akses akun</h6>
+        {% if akun_orang %}
+          <div class="small">Sudah punya akun: <b>{{ akun_orang.email }}</b></div>
+          <div class="d-flex flex-wrap gap-1 mt-2">
+            <span class="chip {{ 'chip-primary' if akun_orang.is_admin else 'peran-' ~ (akun_orang.peran or 'anggota') }}">{{ 'Admin' if akun_orang.is_admin else PERAN[akun_orang.peran or 'anggota'] }}</span>
+            {% if akun_orang.wajib_ganti %}<span class="chip chip-accent">Belum membuat kata sandi</span>{% endif %}
+            <span class="chip">Login terakhir: {{ akun_orang.last_login|tgl if akun_orang.last_login else 'belum' }}</span>
+          </div>
+          {% if akun_orang.id != me.id %}
+          <form method="post" action="{{ url_for('reset_sandi', uid=akun_orang.id) }}" class="mt-2" data-confirm="Reset kata sandi akun ini? Kata sandi lama tidak berlaku lagi.">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm"><i class="bi bi-arrow-repeat me-1"></i>Reset kata sandi</button></form>
+          {% endif %}
+        {% elif p.email %}
+          <p class="small ft-muted mb-2">Berikan akun untuk <b>{{ p.email }}</b> tanpa perlu mendaftar. Anggota menerima kata sandi sementara dan wajib menggantinya saat pertama masuk.</p>
+          <form method="post" action="{{ url_for('beri_akses', pid=p.id) }}" class="d-flex flex-wrap gap-2 align-items-center">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <select name="peran" class="form-select form-select-sm" style="width:auto">{% for k, lbl in PERAN.items() %}<option value="{{ k }}">{{ lbl }}</option>{% endfor %}</select>
+            <button class="btn btn-primary btn-sm"><i class="bi bi-person-check me-1"></i>Berikan akses akun</button>
+          </form>
+        {% else %}
+          <p class="small ft-muted mb-2">Belum ada email di biodata. Isi email lebih dulu untuk memberikan akses akun.</p>
+          <a href="{{ url_for('anggota_ubah', pid=p.id) }}" class="btn btn-soft btn-sm"><i class="bi bi-envelope-plus me-1"></i>Isi email</a>
+        {% endif %}
       </div>
       {% endif %}
 

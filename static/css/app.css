@@ -1174,3 +1174,12 @@ body.kej-aktif { overflow: hidden; }
   .tree-judul > .min-w-0 { flex: 1 1 0; min-width: 0; overflow: hidden; }
   .tree-judul .tb-profil { flex: 0 0 auto; }
 }
+
+/* panel akses akun */
+.akses-panel { border-color: #bfe3cf; background: linear-gradient(135deg, #f1fbf5, var(--ft-surface)); }
+.akses-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .6rem; }
+.akses-grid > div { padding: .7rem .9rem; border-radius: 14px; background: var(--ft-surface); border: 1px solid var(--ft-border); min-width: 0; }
+.akses-grid span { display: block; font-size: .72rem; color: var(--ft-muted); font-weight: 600; }
+.akses-grid b { font-size: 1.05rem; word-break: break-all; }
+.btn-wa { background: #25d366; color: #fff; border: 0; }
+.btn-wa:hover { background: #1ebe5b; color: #fff; }

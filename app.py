@@ -240,8 +240,12 @@ def init_db():
             if "link_asal" not in tcols:   # link ke silsilah asal tamu (tautan balik)
                 conn.execute(f"ALTER TABLE {tabel} ADD COLUMN link_asal TEXT")
         ucols = {r[1] for r in conn.execute("PRAGMA table_info(users)")}
+        if "wajib_ganti" not in ucols:   # akun dibuat admin: wajib ganti kata sandi sementara
+            conn.execute("ALTER TABLE users ADD COLUMN wajib_ganti INTEGER NOT NULL DEFAULT 0")
         if "peran" not in ucols:   # anggota | head | super
             conn.execute("ALTER TABLE users ADD COLUMN peran TEXT NOT NULL DEFAULT 'anggota'")
+        if "email" not in cols:   # email di biodata (dipakai juga untuk memberi akses akun)
+            conn.execute("ALTER TABLE persons ADD COLUMN email TEXT")
         for kol, tipe in (("tanggal_wafat", "TEXT"), ("tahun_wafat", "INTEGER"), ("makam", "TEXT")):
             if kol not in cols:   # data kenangan untuk yang telah berpulang
                 conn.execute(f"ALTER TABLE persons ADD COLUMN {kol} {tipe}")
@@ -1116,7 +1120,7 @@ def ensure_marriage(db, a, b, status="menikah", tanggal_nikah=None, tanggal_sele
 
 LABEL_KOLOM = [("nama", "Nama"), ("jenis_kelamin", "Jenis kelamin"), ("tanggal_lahir", "Tanggal lahir"),
                ("tahun_lahir", "Tahun lahir"), ("urutan_lahir", "Anak ke-"), ("pekerjaan", "Pekerjaan"),
-               ("wa", "WA"), ("alamat", "Alamat"), ("bio", "Cerita"), ("wafat", "Status berpulang"),
+               ("wa", "WA"), ("email", "Email"), ("alamat", "Alamat"), ("bio", "Cerita"), ("wafat", "Status berpulang"),
                ("ayah_id", "Ayah"), ("ibu_id", "Ibu"), ("tampil_kontak", "Tampilkan kontak"),
                ("tanggal_wafat", "Tanggal berpulang"), ("tahun_wafat", "Tahun berpulang"), ("makam", "Tempat peristirahatan")]
 
@@ -1217,6 +1221,9 @@ def save_person(person=None, keep_existing=False, self_exclude=None, form=None, 
                 errors.append("Tahun berpulang sepertinya belum tepat.")
                 thn_wafat = None
         makam = _clean(f.get("makam"), 200)
+    email_p = (f.get("email") or "").strip().lower()[:160] or None
+    if email_p and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email_p):
+        errors.append("Format email belum benar.")
     wa = _clean(f.get("wa"), 25)
     if wa and len(re.sub(r"\D", "", wa)) < 8:
         errors.append("Nomor WA terlalu pendek.")
@@ -1315,7 +1322,7 @@ def save_person(person=None, keep_existing=False, self_exclude=None, form=None, 
 
     if dry:   # pratinjau usulan: hitung perubahan tanpa menyimpan
         new = dict(nama=nama, jenis_kelamin=jk, tahun_lahir=tahun, tanggal_lahir=tanggal, urutan_lahir=urutan,
-                   alamat=_clean(f.get("alamat"), 300), wa=wa, pekerjaan=_clean(f.get("pekerjaan"), 120),
+                   alamat=_clean(f.get("alamat"), 300), wa=wa, email=email_p, pekerjaan=_clean(f.get("pekerjaan"), 120),
                    bio=_clean(f.get("bio"), 1000), ayah_id=relasi["ayah"], ibu_id=relasi["ibu"],
                    wafat=1 if f.get("wafat") else 0, tampil_kontak=1 if f.get("tampil_kontak") else 0,
                    tanggal_wafat=tgl_wafat, tahun_wafat=thn_wafat, makam=makam)
@@ -1336,7 +1343,7 @@ def save_person(person=None, keep_existing=False, self_exclude=None, form=None, 
         relasi[key] = cur.lastrowid
 
     data = dict(nama=nama, jenis_kelamin=jk, tahun_lahir=tahun, tanggal_lahir=tanggal, urutan_lahir=urutan, alamat=_clean(f.get("alamat"), 300),
-                wa=wa, pekerjaan=_clean(f.get("pekerjaan"), 120), bio=_clean(f.get("bio"), 1000),
+                wa=wa, email=email_p, pekerjaan=_clean(f.get("pekerjaan"), 120), bio=_clean(f.get("bio"), 1000),
                 ayah_id=relasi["ayah"], ibu_id=relasi["ibu"],
                 wafat=1 if f.get("wafat") else 0, tampil_kontak=1 if f.get("tampil_kontak") else 0,
                 tanggal_wafat=tgl_wafat, tahun_wafat=thn_wafat, makam=makam)
@@ -1495,6 +1502,9 @@ def masuk():
         session.permanent = bool(request.form.get("ingat"))
         db.execute("UPDATE users SET last_login=? WHERE id=?", (now(), user["id"]))
         db.commit()
+        if user["wajib_ganti"]:
+            flash(f"Selamat datang, {user['nama'].split()[0]}! Silakan buat kata sandi pribadi Anda dulu 🔐", "info")
+            return redirect(url_for("akun_sandi"))
         nxt = request.args.get("next") or ""
         return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else url_for("beranda"))
     return render_template("auth/masuk.html", email="")
@@ -1636,6 +1646,8 @@ def profil():
     v = form_values(person)
     if not person and request.method == "GET":
         v.setdefault("nama", user["nama"])
+    if request.method == "GET" and not v.get("email"):
+        v["email"] = user["email"]
     return render_template("person_form.html", v=v, person=person, is_profile=True, calon=calon,
                            saran=saran, fam=family())
 
@@ -1744,6 +1756,8 @@ def anggota_detail(pid):
         "WHERE s.person_id=? AND s.status='menunggu' ORDER BY s.id", (pid,)).fetchall()
     kembar = [d for d in matching.find_duplicates(fam, claimed=claimed_ids()) if pid in (d["a"], d["b"])]
     kembar = [d for d in kembar if can_merge(d["a"], d["b"])]
+    akun_orang = db.execute("SELECT id, email, peran, is_admin, wajib_ganti, last_login FROM users WHERE person_id=?", (pid,)).fetchone()
+    akses_baru = session.pop("akses_baru", None) if current_user()["is_admin"] else None
     cerita = families_of(fam, pid, db.execute("SELECT * FROM keluarga").fetchall())
     tautan = db.execute("SELECT * FROM tautan_luar WHERE person_id=? ORDER BY id", (pid,)).fetchall()
     ucapan, ui = [], ultah_info(p)
@@ -1768,6 +1782,7 @@ def anggota_detail(pid):
                                    "WHERE a.titik_id=? AND a.aktif=1", (pid,)).fetchall()
              if akses_tamu_valid(a) and (not a["link_asal"] or a["link_asal"] not in sudah)]
     return render_template("person.html", p=p, fam=fam, akun=akun, editor=editor, rel=rel, cerita=cerita, tautan=tautan,
+                           akun_orang=akun_orang, akses_baru=akses_baru,
                            pintu=pintu, kenangan=kenangan, tabur=tabur, ucapan=ucapan, ui=ui, STIKER=STIKER, rayak=rayak,
                            tebakan=parent_guesses(fam, pid), riwayat=riwayat, usulan=usulan, kembar=kembar,
                            loads=json.loads)
@@ -1998,6 +2013,143 @@ def anggota_hapus(pid):
     remove_photo(person["foto"])
     flash(f"Data {person['nama']} telah dihapus.", "info")
     return redirect(url_for("anggota"))
+
+
+# === AKUN: AKSES DARI ADMIN & KATA SANDI ===
+KATA_SANDI_DASAR = ["Melati", "Kenanga", "Cempaka", "Anggrek", "Teratai", "Mawar", "Kemuning", "Seroja"]
+
+
+def sandi_sementara():
+    return secrets.choice(KATA_SANDI_DASAR) + str(secrets.randbelow(9000) + 1000)
+
+
+def link_atur_sandi(user_id):
+    return url_for("atur_sandi", token=serializer.dumps({"uid": user_id}, salt="atur-sandi"), _external=True)
+
+
+def kirim_akses(user, sandi, link, judul):
+    isi = (f"Akun Anda di <b>{APP_NAME}</b> sudah disiapkan oleh admin keluarga.<br><br>"
+           f"Email: <b>{user['email']}</b><br>Kata sandi sementara: <b>{sandi}</b><br><br>"
+           "Klik tombol di bawah untuk langsung membuat kata sandi pribadi (berlaku 7 hari), "
+           "atau masuk dengan kata sandi sementara lalu menggantinya.")
+    return send_mail(user["email"], judul, mail_body(f"Halo {user['nama'].split(',')[0]},", isi, "Buat kata sandi saya", link))
+
+
+@app.before_request
+def paksa_ganti_sandi():
+    user = current_user()
+    if user and user["status"] == "active" and user["wajib_ganti"] and request.endpoint not in (
+            "akun_sandi", "keluar", "static", "foto", "atur_sandi"):
+        return redirect(url_for("akun_sandi"))
+    return None
+
+
+@app.route("/anggota/<int:pid>/beri-akses", methods=["POST"])
+@admin_required
+def beri_akses(pid):
+    p, db = _person(pid), get_db()
+    if not p:
+        abort(404)
+    email = (p["email"] or "").strip().lower()
+    peran = request.form.get("peran") if request.form.get("peran") in PERAN else "anggota"
+    if not email:
+        flash("Isi email di biodata orang ini terlebih dahulu.", "warning")
+    elif p["wafat"]:
+        flash("Anggota yang telah berpulang tidak dapat diberi akun.", "warning")
+    elif db.execute("SELECT 1 FROM users WHERE person_id=?", (pid,)).fetchone():
+        flash("Orang ini sudah memiliki akun.", "info")
+    elif db.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
+        flash(f"Email {email} sudah dipakai akun lain. Gunakan email berbeda di biodata.", "warning")
+    else:
+        sandi = sandi_sementara()
+        uid = db.execute("INSERT INTO users (email, password_hash, nama, status, is_admin, peran, person_id, approved_at, "
+                         "wajib_ganti) VALUES (?,?,?,?,?,?,?,?,1)",
+                         (email, generate_password_hash(sandi), p["nama"], "active", 0, peran, pid, now())).lastrowid
+        log_riwayat(db, pid, [f"Diberi akses akun ({PERAN[peran]})"])
+        db.commit()
+        g.pop("claimed", None)
+        user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        link = link_atur_sandi(uid)
+        terkirim = kirim_akses(user, sandi, link, f"Akun {APP_NAME} untuk Anda")
+        session["akses_baru"] = {"nama": p["nama"], "email": email, "sandi": sandi, "link": link,
+                                 "wa": wa_link(p["wa"]) if p["wa"] else None, "terkirim": terkirim}
+        flash(f"Akun untuk {nama_pendek(p['nama'])} dibuat sebagai {PERAN[peran]} 🎉", "success")
+    return redirect(url_for("anggota_detail", pid=pid) + "#akses")
+
+
+@app.route("/admin/user/<int:uid>/reset-sandi", methods=["POST"])
+@admin_required
+def reset_sandi(uid):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id=? AND peran<>'tamu'", (uid,)).fetchone()
+    if not user or user["id"] == current_user()["id"]:
+        abort(400)
+    sandi = sandi_sementara()
+    db.execute("UPDATE users SET password_hash=?, wajib_ganti=1 WHERE id=?", (generate_password_hash(sandi), uid))
+    db.commit()
+    link = link_atur_sandi(uid)
+    terkirim = kirim_akses(user, sandi, link, f"Kata sandi {APP_NAME} Anda direset")
+    wa = None
+    if user["person_id"]:
+        p = _person(user["person_id"])
+        wa = wa_link(p["wa"]) if p and p["wa"] else None
+    session["akses_baru"] = {"nama": user["nama"], "email": user["email"], "sandi": sandi, "link": link, "wa": wa,
+                             "terkirim": terkirim, "reset": True}
+    flash(f"Kata sandi {user['nama'].split(',')[0]} direset.", "success")
+    return redirect(url_for("admin") + "#akses")
+
+
+@app.route("/atur-sandi/<token>", methods=["GET", "POST"])
+def atur_sandi(token):
+    try:
+        data = serializer.loads(token, salt="atur-sandi", max_age=7 * 86400)
+    except SignatureExpired:
+        return render_template("auth/status.html", status="expired")
+    except BadSignature:
+        abort(404)
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id=? AND status='active'", (data["uid"],)).fetchone()
+    if not user:
+        abort(404)
+    if request.method == "POST":
+        baru, ulang = request.form.get("baru") or "", request.form.get("ulang") or ""
+        if len(baru) < 8:
+            flash("Kata sandi minimal 8 karakter.", "warning")
+        elif baru != ulang:
+            flash("Konfirmasi kata sandi belum sama.", "warning")
+        else:
+            db.execute("UPDATE users SET password_hash=?, wajib_ganti=0, last_login=? WHERE id=?",
+                       (generate_password_hash(baru), now(), user["id"]))
+            db.commit()
+            session.clear()
+            session["uid"] = user["id"]
+            flash("Kata sandi tersimpan. Selamat datang di silsilah keluarga 🌿", "success")
+            return redirect(url_for("beranda"))
+    return render_template("auth/sandi.html", user=user, lewat_link=True)
+
+
+@app.route("/akun/sandi", methods=["GET", "POST"])
+@login_required
+def akun_sandi():
+    if is_tamu():
+        abort(403)
+    user, db = current_user(), get_db()
+    if request.method == "POST":
+        lama, baru, ulang = (request.form.get(k) or "" for k in ("lama", "baru", "ulang"))
+        if not check_password_hash(user["password_hash"], lama):
+            flash("Kata sandi saat ini belum cocok.", "warning")
+        elif len(baru) < 8:
+            flash("Kata sandi baru minimal 8 karakter.", "warning")
+        elif baru != ulang:
+            flash("Konfirmasi kata sandi baru belum sama.", "warning")
+        elif baru == lama:
+            flash("Gunakan kata sandi yang berbeda dari sebelumnya.", "warning")
+        else:
+            db.execute("UPDATE users SET password_hash=?, wajib_ganti=0 WHERE id=?", (generate_password_hash(baru), user["id"]))
+            db.commit()
+            flash("Kata sandi berhasil diganti 🔐", "success")
+            return redirect(url_for("beranda"))
+    return render_template("auth/sandi.html", user=user, lewat_link=False)
 
 
 # === UCAPAN ULANG TAHUN ===
@@ -2564,6 +2716,7 @@ def admin():
     dupes = matching.find_duplicates(fam, claimed=claimed_ids())
     minta_tamu = get_db().execute("SELECT COUNT(*) FROM permintaan_tamu WHERE status='menunggu'").fetchone()[0]
     return render_template("admin/admin.html", groups=groups, last_link=session.pop("last_link", None), minta_tamu=minta_tamu,
+                           akses_baru=session.pop("akses_baru", None),
                            dupes=dupes, fam=fam)
 
 

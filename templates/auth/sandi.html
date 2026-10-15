@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Buat kata sandi' if lewat_link or user.wajib_ganti else 'Ganti kata sandi' }}{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="ft-card auth-card fade-up">
+    <div class="text-center mb-4">
+      <div class="feature-icon mx-auto mb-3"><i class="bi bi-shield-lock"></i></div>
+      {% if lewat_link or user.wajib_ganti %}
+      <h3 class="mb-1">Buat kata sandi pribadi</h3>
+      <p class="ft-muted small mb-0">Halo <b>{{ user.nama.split(',')[0] }}</b> 👋 Akun Anda disiapkan oleh admin keluarga. Buat kata sandi yang hanya Anda ketahui, minimal 8 karakter.</p>
+      {% else %}
+      <h3 class="mb-1">Ganti kata sandi</h3>
+      <p class="ft-muted small mb-0">Masuk sebagai <b>{{ user.email }}</b></p>
+      {% endif %}
+    </div>
+    <form method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="text" name="username" value="{{ user.email }}" autocomplete="username" class="d-none" readonly>
+      {% if not lewat_link %}
+      <div class="mb-3"><label class="form-label">{{ 'Kata sandi sementara' if user.wajib_ganti else 'Kata sandi saat ini' }}</label>
+        <div class="input-icon"><i class="bi bi-key"></i><input type="password" name="lama" class="form-control" required autocomplete="current-password" enterkeyhint="next"></div></div>
+      {% endif %}
+      <div class="mb-3"><label class="form-label">Kata sandi baru</label>
+        <div class="input-icon"><i class="bi bi-lock"></i><input type="password" name="baru" class="form-control" required minlength="8" autocomplete="new-password" enterkeyhint="next" placeholder="Minimal 8 karakter"></div></div>
+      <div class="mb-4"><label class="form-label">Ulangi kata sandi baru</label>
+        <div class="input-icon"><i class="bi bi-lock"></i><input type="password" name="ulang" class="form-control" required minlength="8" autocomplete="new-password" enterkeyhint="done"></div></div>
+      <button class="btn btn-primary w-100 py-2">Simpan kata sandi</button>
+    </form>
+    {% if not lewat_link and not user.wajib_ganti %}<p class="text-center small mt-3 mb-0"><a href="{{ url_for('beranda') }}" class="ft-muted">Batal</a></p>
+    {% elif user.wajib_ganti %}<p class="text-center small mt-3 mb-0"><a href="{{ url_for('keluar') }}" class="ft-muted">Keluar</a></p>{% endif %}
+  </div>
+</div>
+{% endblock %}
