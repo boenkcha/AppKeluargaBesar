@@ -66,8 +66,11 @@ Anak dari {{ fam.get(parent).nama }}
     <div class="d-flex justify-content-center align-items-center gap-3 gap-md-5 mb-4">
       <div class="text-center">{{ avatar(pa, 88) }}<div class="fw-bold mt-2">{{ pa.nama }}</div></div>
       <div class="text-center">
-        <i class="bi bi-{{ 'heart-fill' if rel.kind == 'nikah' else 'signpost-split' if rel.kind == 'jauh' else 'link-45deg' }} fs-2" style="color:var({{ '--ft-rose' if rel.kind == 'nikah' else '--ft-accent' if rel.kind == 'jauh' else '--ft-primary' }})"></i>
-        <div class="small ft-muted">{{ 'ikatan pernikahan' if rel.kind == 'nikah' else 'kerabat jauh' if rel.kind == 'jauh' else 'hubungan darah' }}</div>
+        {# hati hanya untuk suami-istri; kerabat karena pernikahan (mertua, ipar, besan…) memakai ikon keluarga #}
+        {% set pasangan = rel.kind == 'nikah' and pb.id in fam.spouses(pa.id) %}
+        {% set mantan = pasangan and fam.is_ex(pa.id, pb.id) %}
+        <i class="bi bi-{{ ('heartbreak-fill' if mantan else 'heart-fill') if pasangan else 'people-fill' if rel.kind == 'nikah' else 'signpost-split' if rel.kind == 'jauh' else 'link-45deg' }} fs-2" style="color:var({{ '--ft-rose' if pasangan else '--ft-accent' if rel.kind in ('nikah', 'jauh') else '--ft-primary' }})"></i>
+        <div class="small ft-muted">{{ ('mantan pasangan' if mantan else 'pasangan hidup') if pasangan else 'kerabat karena pernikahan' if rel.kind == 'nikah' else 'kerabat jauh' if rel.kind == 'jauh' else 'hubungan darah' }}</div>
       </div>
       <div class="text-center">{{ avatar(pb, 88) }}<div class="fw-bold mt-2">{{ pb.nama }}</div></div>
     </div>
