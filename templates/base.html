@@ -54,6 +54,7 @@
       <ul class="dropdown-menu dropdown-menu-end">
         <li><a class="dropdown-item" href="{{ url_for('profil') }}"><i class="bi bi-person-circle me-2"></i>Profil saya</a></li>
         <li><a class="dropdown-item" href="{{ url_for('akun_sandi') }}"><i class="bi bi-shield-lock me-2"></i>Ganti kata sandi</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('buku') }}"><i class="bi bi-journal-bookmark me-2"></i>Buku silsilah (PDF)</a></li>
         {% if me.person_id %}<li><a class="dropdown-item" href="{{ url_for('anggota_detail', pid=me.person_id) }}"><i class="bi bi-eye me-2"></i>Lihat halaman saya</a></li>{% endif %}
         {% if me.is_admin %}<li><a class="dropdown-item d-lg-none" href="{{ url_for('admin') }}"><i class="bi bi-shield-check me-2"></i>Admin{% if pending_count %} ({{ pending_count }}){% endif %}</a></li>{% endif %}
         <li><hr class="dropdown-divider"></li>

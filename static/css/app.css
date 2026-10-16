@@ -1155,7 +1155,7 @@ body.kej-aktif { overflow: hidden; }
   .tree-toolbar h4 { font-size: 1rem; }
   .tb-profil { min-height: 36px; padding: .3rem .7rem; }
   .tree-actions { flex-direction: column; align-items: stretch; gap: .45rem; flex-wrap: nowrap !important; overflow: visible !important; padding: 0; }
-  .tb-seg { display: grid !important; grid-template-columns: 1fr 1fr; width: 100%; }
+  .tb-seg { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
   .tb-seg a { text-align: center; padding: .45rem .5rem; }
   .tb-alat { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .4rem; }
   .tb-alat .tb-item, .tb-alat .tb-item > .btn { min-height: 36px; padding: .3rem .4rem; font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

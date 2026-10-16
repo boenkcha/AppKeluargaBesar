@@ -41,7 +41,7 @@
 
 {% macro tnode(p, fam, focus=None, my=None, cls='', label=None, badge=None) -%}
 {% set pu = pekan_ultah(p) %}
-<a href="{{ url_for('pohon', pid=p.id, mode=request.args.get('mode','keturunan')) }}" class="tnode {{ p.jenis_kelamin or '' }} {{ 'focus' if p.id == focus }} {{ 'me' if p.id == my }} {{ 'ultah' if pu }} {{ cls }}" title="{{ ('🎂 Pekan ulang tahun ke-' ~ pu.ke ~ ' · ') if pu }}Lihat pohon {{ p.nama }}">
+<a href="{{ url_for('pohon', pid=p.id, mode=request.args.get('mode','keluarga')) }}" class="tnode {{ p.jenis_kelamin or '' }} {{ 'focus' if p.id == focus }} {{ 'me' if p.id == my }} {{ 'ultah' if pu }} {{ cls }}" title="{{ ('🎂 Pekan ulang tahun ke-' ~ pu.ke ~ ' · ') if pu }}Lihat pohon {{ p.nama }}">
   {% if pu %}<span class="ultah-lencana" aria-hidden="true">🎂</span>{% endif %}
   {% if badge and p.id != my %}<span class="tbadge {{ p.jenis_kelamin or '' }}">{{ badge }}</span>{% endif %}
   <span class="tn-foto">

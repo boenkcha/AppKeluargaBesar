@@ -711,12 +711,20 @@
       if (!f) return;
       const r = f.getBoundingClientRect(), v = vp.getBoundingClientRect();
       vp.scrollLeft += r.left - v.left - v.width / 2 + r.width / 2;
-      vp.scrollTop += r.top - v.top - v.height / 3;
+      // gulir vertikal hanya bila yang difokuskan tidak terlihat (agar orang tua di atasnya tidak terpotong)
+      if (r.top < v.top || r.bottom > v.bottom - 16) vp.scrollTop += r.top - v.top - v.height / 3;
     }
     requestAnimationFrame(() => {
       if (hp()) {   // HP: perkecil sampai muat selebar layar
         if (canvas.scrollWidth > vp.clientWidth) setZoom(Math.max(0.4, (vp.clientWidth - 12) / canvas.scrollWidth));
       } else if (canvas.scrollWidth > vp.clientWidth * 1.6) setZoom(Math.max(0.6, (vp.clientWidth - 20) / canvas.scrollWidth));
+      if (canvas.dataset.muat) {   // pohon keluarga inti: muatkan seluruhnya (lebar & tinggi) dalam bingkai
+        const awal = zoom;
+        canvas.style.zoom = 1;   // ukur pada 100%
+        const w = canvas.scrollWidth, h = canvas.scrollHeight;
+        const z = Math.min(awal, (vp.clientHeight - 8) / h, w > vp.clientWidth ? (vp.clientWidth - 12) / w : 1);
+        setZoom(Math.max(0.4, Math.min(awal, z)));
+      }
       centerFocus();
     });
   }

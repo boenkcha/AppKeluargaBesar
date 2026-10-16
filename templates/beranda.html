@@ -67,7 +67,7 @@
             {% if k.kutipan %}<div class="k-quote-mini"><i class="bi bi-quote"></i> {{ k.kutipan }}{% if k.kutipan_oleh %} <span>— {{ k.kutipan_oleh }}</span>{% endif %}</div>{% endif %}
             <div class="d-flex flex-wrap gap-2 mt-3">
               <a href="{{ url_for('keluarga_lihat', kid=k.id) }}" class="btn btn-primary btn-sm"><i class="bi bi-book me-1"></i>Baca selengkapnya</a>
-              {% if k.leluhur_id %}<a href="{{ url_for('pohon', pid=k.leluhur_id) }}" class="btn btn-ghost btn-sm"><i class="bi bi-diagram-3 me-1"></i>Pohon keturunan</a>{% endif %}
+              {% if k.leluhur_id %}<a href="{{ url_for('pohon', pid=k.leluhur_id, mode='keturunan') }}" class="btn btn-ghost btn-sm"><i class="bi bi-diagram-3 me-1"></i>Pohon keturunan</a>{% endif %}
               <a href="{{ url_for('keluarga_daftar') }}" class="btn btn-ghost btn-sm">Semua cerita</a>
             </div>
           </div>

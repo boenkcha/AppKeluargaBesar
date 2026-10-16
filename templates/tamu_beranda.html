@@ -27,7 +27,7 @@
       <div class="d-flex flex-wrap gap-2">
         <a href="{{ url_for('anggota_detail', pid=titik.id) }}" class="btn btn-primary btn-sm"><i class="bi bi-person me-1"></i>Profil</a>
         <a href="{{ url_for('pohon', pid=titik.id, mode='leluhur') }}" class="btn btn-soft btn-sm"><i class="bi bi-arrow-up me-1"></i>Leluhur</a>
-        <a href="{{ url_for('pohon', pid=titik.id) }}" class="btn btn-soft btn-sm"><i class="bi bi-arrow-down me-1"></i>Keturunan</a>
+        <a href="{{ url_for('pohon', pid=titik.id, mode='keturunan') }}" class="btn btn-soft btn-sm"><i class="bi bi-arrow-down me-1"></i>Keturunan</a>
       </div>
     </div>
   </div>

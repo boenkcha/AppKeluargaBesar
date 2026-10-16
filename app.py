@@ -881,6 +881,7 @@ def can_tulis_cerita(k=None, leluhur_id=None):
 app.add_template_global(can_tulis_cerita)
 
 
+GARIS_ATAS = {"sendiri", "ortu", "ayah", "ibu", "ayah-ibu", "pasangan"}
 GARIS_URUT = {"sendiri": 0, "ortu": 1, "ayah": 2, "ayah-ibu": 2, "ibu": 3, "pasangan": 4, "keturunan": 5, "kerabat": 6}
 
 
@@ -1592,7 +1593,8 @@ def beranda():
     cerita = []
     for k in semua_cerita:
         pos = lineage_info(fam, my["id"], k["leluhur_id"]) if my else None
-        if pos and pos["kind"] != "kerabat":
+        # hanya garis ke atas: keluarga sendiri, orang tua, garis ayah/ibu, atau garis pasangan
+        if pos and pos["kind"] in GARIS_ATAS:
             cerita.append({"k": k, "stats": keluarga_stats(fam, k["leluhur_id"]), "posisi": pos})
     # garis yang sama: tampilkan yang leluhurnya paling tinggi (cerita induk), cabangnya ada di halaman cerita
     cerita.sort(key=lambda c: (GARIS_URUT.get(c["posisi"]["kind"], 9),
@@ -1602,9 +1604,10 @@ def beranda():
         if c["posisi"]["kind"] not in dipakai:
             terpilih.append(c)
             dipakai.add(c["posisi"]["kind"])
-    cerita = terpilih or [{"k": k, "stats": keluarga_stats(fam, k["leluhur_id"]),
-                           "posisi": {"kind": "umum", "label": "Cerita keluarga besar", "kalimat": ""}}
-                          for k in list(semua_cerita)[:1]]
+    # akun tanpa data diri (mis. admin pengelola) melihat cerita keluarga besar secara umum
+    cerita = terpilih if my else [{"k": k, "stats": keluarga_stats(fam, k["leluhur_id"]),
+                                   "posisi": {"kind": "umum", "label": "Cerita keluarga besar", "kalimat": ""}}
+                                  for k in list(semua_cerita)[:1]]
     garis_belum = garis_kosong(fam, my["id"], semua_cerita) if my else []
     menunggu = [r for r in db.execute(
         "SELECT s.*, u.nama AS oleh, p.nama AS untuk FROM usulan s JOIN users u ON u.id=s.user_id "
@@ -2631,18 +2634,182 @@ def keluarga_hapus(kid):
     return redirect(url_for("keluarga_daftar"))
 
 
+# === BUKU SILSILAH (siap cetak / simpan PDF) ===
+ROMAWI = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV",
+          "XVI", "XVII", "XVIII", "XIX", "XX"]
+
+
+@app.template_global()
+def generasi_sebutan(n):
+    from family import descendant_term
+    return "Leluhur" if n == 0 else descendant_term(n)
+
+
+def pilihan_buku(fam, rows):
+    """Leluhur yang bisa dijadikan pangkal buku: leluhur cerita keluarga & leluhur teratas yang punya keturunan."""
+    out, seen = [], set()
+    for r in rows:
+        if r["leluhur_id"] in fam.people and r["leluhur_id"] not in seen:
+            seen.add(r["leluhur_id"])
+            out.append({"id": r["leluhur_id"], "judul": r["judul"], "n": len(fam.descendants(r["leluhur_id"]))})
+    for pid in fam.people:
+        if pid in seen or fam.parents(pid) or not fam.children(pid):
+            continue
+        if any(s in seen for s in fam.spouses(pid)):   # pasangan leluhur yang sudah terdaftar
+            continue
+        seen.add(pid)
+        out.append({"id": pid, "judul": f"Keluarga Besar {nama_pendek(fam.people[pid]['nama'])}",
+                    "n": len(fam.descendants(pid))})
+    return sorted(out, key=lambda x: -x["n"])
+
+
+def susun_buku(fam, lid, rows):
+    """Isi buku: setiap keturunan diberi nomor silsilah (1, 1.2, 1.2.3 — anak ke-3 dari anak ke-2 leluhur),
+    dikelompokkan per bab (satu bab untuk setiap anak leluhur), lengkap dengan pasangan & anak-anaknya."""
+    nomor, urut, gen = {lid: "1"}, [lid], {lid: 0}
+    for x in urut:                                # BFS memberi nomor; keturunan yang muncul dua kali pakai nomor pertama
+        for i, c in enumerate(fam.children(x), 1):
+            if c not in nomor:
+                nomor[c], gen[c] = f"{nomor[x]}.{i}", gen[x] + 1
+                urut.append(c)
+
+    def kunci(n):
+        return [int(t) for t in n.split(".")]
+
+    cerita_of = {}
+    for r in rows:
+        if r["leluhur_id"] in fam.people:
+            for x in [r["leluhur_id"]] + fam.spouses(r["leluhur_id"]):
+                cerita_of.setdefault(x, r)
+
+    def ortu_teks(pid):
+        p = fam.people[pid]
+        ortu = [nama_pendek(fam.people[x]["nama"], 4) for x in fam.parents(pid)]
+        if not ortu:
+            return None
+        kata = {"L": "putra", "P": "putri"}.get(fam.gender(pid), "anak")
+        return f"{kata} dari {' & '.join(ortu)}"
+
+    def entri(pid):
+        nikah, tercakup = [], set()
+        for m in fam.marriages(pid):
+            anak = [(nomor[c], fam.people[c]) for c in m["children"] if c in nomor]
+            tercakup |= set(m["children"])
+            s = m["spouse"]
+            nikah.append({"p": fam.people[s], "ke": m["ke"], "status": m["status"], "status_label": m["status_label"],
+                          "tanggal": m.get("tanggal_nikah"), "tanggal_selesai": m.get("tanggal_selesai"),
+                          "nomor": nomor.get(s), "ortu": ortu_teks(s) if s not in nomor else None, "anak": anak})
+        lain = [(nomor[c], fam.people[c]) for c in fam.children(pid) if c not in tercakup and c in nomor]
+        if lain:
+            nikah.append({"p": None, "ke": None, "anak": lain})
+        p = fam.people[pid]
+        return {"nomor": nomor[pid], "gen": gen[pid], "p": p, "nikah": nikah, "jumlah_nikah": len(fam.marriages(pid)),
+                "ortu": ortu_teks(pid) if pid != lid else None, "cerita": cerita_of.get(pid) if pid != lid else None,
+                "anak_ke": nomor[pid].split(".")[-1] if pid != lid else None}
+
+    semua = sorted(nomor, key=lambda x: kunci(nomor[x]))
+    bab = [{"judul": "Sang Leluhur", "kepala": lid, "entri": [entri(lid)]}]
+    for c in fam.children(lid):
+        if nomor.get(c, "").count(".") != 1:
+            continue
+        isi = [entri(x) for x in semua if nomor[x] == nomor[c] or nomor[x].startswith(nomor[c] + ".")]
+        bab.append({"judul": f"Keluarga {nama_pendek(fam.people[c]['nama'], 3)}", "kepala": c, "entri": isi})
+    for i, b in enumerate(bab):
+        b["romawi"] = ROMAWI[i] if i < len(ROMAWI) else str(i + 1)
+
+    # pasangan keturunan (yang bukan keturunan) juga dimuat di indeks
+    pasangan = {}
+    for x in semua:
+        for s in fam.spouses(x):
+            if s not in nomor:
+                pasangan.setdefault(s, []).append(nomor[x])
+    indeks = [{"p": fam.people[x], "ref": nomor[x], "pasangan": False} for x in semua]
+    indeks += [{"p": fam.people[s], "ref": ", ".join(refs), "pasangan": True} for s, refs in pasangan.items()]
+    indeks.sort(key=lambda r: r["p"]["nama"].lower())
+    huruf = {}
+    for r in indeks:
+        huruf.setdefault((r["p"]["nama"][:1] or "#").upper(), []).append(r)
+
+    orang = [fam.people[x] for x in semua] + [fam.people[s] for s in pasangan]
+    per_gen = {}
+    for x in semua:
+        d = per_gen.setdefault(gen[x], {"gen": gen[x], "nama": generasi_sebutan(gen[x]), "jumlah": 0, "hidup": 0, "pasangan": 0})
+        d["jumlah"] += 1
+        d["hidup"] += 0 if fam.people[x]["wafat"] else 1
+        d["pasangan"] += sum(1 for s in fam.spouses(x) if s not in nomor)
+    kalender = {}
+    for p in orang:
+        d = _date(p["tanggal_lahir"])
+        if d and not p["wafat"]:
+            kalender.setdefault(d.month, []).append({"p": p, "hari": d.day, "nomor": nomor.get(p["id"])})
+    for v in kalender.values():
+        v.sort(key=lambda t: t["hari"])
+    berpulang = sorted([p for p in orang if p["wafat"]], key=lambda p: (p["tahun_wafat"] or 9999, p["nama"]))
+
+    def bagan(pid, depth=0, seen=None):
+        seen = seen if seen is not None else set()
+        seen.add(pid)
+        out = [{"nomor": nomor[pid], "p": fam.people[pid], "depth": depth,
+                "pasangan": [fam.people[s] for s in fam.spouses(pid)]}]
+        for c in fam.children(pid):
+            if c not in seen and nomor.get(c, "").rsplit(".", 1)[0] == nomor[pid]:
+                out += bagan(c, depth + 1, seen)
+        return out
+
+    return {"nomor": nomor, "bab": bab, "indeks": huruf, "per_gen": [per_gen[k] for k in sorted(per_gen)],
+            "kalender": [(BULAN[m - 1], kalender[m]) for m in sorted(kalender)], "berpulang": berpulang,
+            "bagan": bagan(lid), "jumlah": len(semua), "keturunan": len(semua) - 1,
+            "rujukan": {**{s: "psg. " + ", ".join(r) for s, r in pasangan.items()}, **nomor}, "jumlah_pasangan": len(pasangan),
+            "generasi": max(gen.values()) + 1, "hidup": sum(1 for x in semua if not fam.people[x]["wafat"])}
+
+
+@app.route("/buku")
+@login_required
+def buku():
+    db, fam, user = get_db(), family(), current_user()
+    rows = db.execute("SELECT * FROM keluarga ORDER BY id").fetchall()
+    pilihan = pilihan_buku(fam, rows)
+    lid = request.args.get("leluhur", type=int)
+    if lid not in fam.people:
+        lid = pilihan[0]["id"] if pilihan else user["person_id"]
+    if lid not in fam.people:
+        flash("Belum ada data silsilah untuk dijadikan buku.", "info")
+        return redirect(url_for("beranda"))
+    cerita = next((r for r in rows if r["leluhur_id"] == lid), None) or \
+        next((r for r in rows if r["leluhur_id"] in fam.spouses(lid)), None)
+    opsi = {"foto": request.args.get("foto", "1") == "1",
+            "lahir": request.args.get("lahir", "lengkap"),                         # lengkap | tahun
+            "kontak": bool(user["is_admin"]) and request.args.get("kontak") == "1"}  # kontak hanya atas pilihan admin
+    L = fam.people[lid]
+    judul = cerita["judul"] if cerita else f"Keluarga Besar {nama_pendek(L['nama'], 3)}"
+    return render_template("buku.html", fam=fam, L=L, lid=lid, cerita=cerita, judul=judul, opsi=opsi,
+                           pilihan=pilihan, buku=susun_buku(fam, lid, rows),
+                           tonggak=parse_tonggak(cerita["tonggak"]) if cerita else [],
+                           penyusun=user["nama"], dicetak=datetime.now(), BULAN=BULAN)
+
+
+@app.template_global()
+def lahir_buku(p, mode="lengkap"):
+    """Tanggal lahir di buku; untuk yang masih hidup bisa diringkas menjadi tahun saja (privasi)."""
+    if mode == "tahun" and not p["wafat"]:
+        return str(p["tahun_lahir"]) if p["tahun_lahir"] else ""
+    return lahir(p)
+
+
 @app.route("/pohon/<int:pid>")
 @login_required
 def pohon(pid):
     fam = family()
     if pid not in fam.people or not tamu_boleh(pid):
         abort(404)
-    mode = request.args.get("mode", "keturunan")
+    mode = request.args.get("mode", "keluarga")
     depth = max(1, min(request.args.get("kedalaman", 4, type=int), 10))
     saudara = request.args.get("saudara", "1") != "0"
     pasangan = request.args.get("pasangan", "1") != "0"
     if mode == "leluhur":
         tree = fam.ancestor_tree(pid, depth, with_siblings=saudara, with_spouses=pasangan)
+    elif mode == "keluarga":   # bawaan: orang tua, saudara, dan anak-anak
+        tree = fam.family_tree(pid)
     else:
         mode = "keturunan"
         tree = fam.descendant_tree(pid, depth)

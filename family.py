@@ -353,6 +353,28 @@ class Family:
             node["children"].append(child)
         return node
 
+    def family_tree(self, pid, child_depth=1):
+        """Pohon keluarga inti: orang tua di atas, lalu orang ini beserta saudara-saudaranya,
+        dan anak-anaknya di bawah. Anak saudara diringkas ('+n anak')."""
+        p = self.people[pid]
+        root = next((x for x in (p["ayah_id"], p["ibu_id"]) if x in self.people), None)
+        if root is None:
+            return self.descendant_tree(pid, child_depth)
+        node = self.descendant_tree(root, 1)
+        node["label"] = {"L": "Ayah", "P": "Ibu"}.get(self.gender(root), "Orang tua")
+        other = p["ibu_id"] if root == p["ayah_id"] else p["ayah_id"]
+        node["spouse_label"] = {other: {"L": "Ayah", "P": "Ibu"}.get(self.gender(other), "Orang tua")} if other in self.people else {}
+        kind = dict(self.siblings(pid))
+        for i, c in enumerate(node["children"]):
+            if c["id"] == pid:
+                node["children"][i] = self.descendant_tree(pid, child_depth)
+                continue
+            older = self.is_older(c["id"], pid)
+            sebut = "Kakak" if older else "Adik" if older is not None else "Saudara"
+            k = kind.get(c["id"], "kandung")
+            c["label"] = sebut if k == "kandung" else f"{sebut} {k}"
+        return node
+
     def ancestor_tree(self, pid, depth, trail=(), with_siblings=False, with_spouses=False, child=None, level=0):
         p = self.people[pid]
         # orang tua lain dari anak di jalur ini sudah tampil sebagai kotak tersendiri

@@ -10,6 +10,7 @@
     <p class="ft-muted mb-2">Kisah asal-usul setiap keluarga besar — agar anak-cucu tahu dari mana mereka berasal.</p>
     {{ ornamen() }}
     {% if can_tulis_cerita() %}<a href="{{ url_for('keluarga_tulis') }}" class="btn btn-primary mt-2"><i class="bi bi-feather me-1"></i>Tulis cerita keluarga</a>{% endif %}
+    {% if not is_tamu() %}<a href="{{ url_for('buku') }}" class="btn btn-ghost mt-2"><i class="bi bi-journal-bookmark me-1"></i>Buku silsilah (PDF)</a>{% endif %}
   </div>
   {% if kosong %}
   <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">

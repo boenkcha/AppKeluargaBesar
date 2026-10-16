@@ -1,0 +1,288 @@
+{%- macro foto(p, size=15) -%}
+{%- if opsi.foto -%}
+<span class="b-foto {{ 'wafat' if p.wafat }}" style="--s:{{ size }}mm">
+  {%- if p.foto %}<img src="{{ url_for('foto', name=p.foto) }}" alt="">{% else %}<span style="--h:{{ hue(p.id) }}">{{ initials(p.nama) }}</span>{% endif -%}
+</span>
+{%- endif -%}
+{%- endmacro -%}
+{%- macro tahun(p) -%}
+{%- set lb = lahir_buku(p, opsi.lahir) -%}{%- set wi = wafat_info(p) -%}
+{%- if lb %}l. {{ lb }}{% endif %}{% if wi %}{{ ' · ' if lb }}† {{ wi.tanggal or 'telah berpulang' }}{% endif -%}
+{%- endmacro -%}
+{%- set contoh = (buku.bab[1].entri[1] if buku.bab|length > 1 and buku.bab[1].entri|length > 1 else (buku.bab[1].entri[0] if buku.bab|length > 1 else none)) -%}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buku Silsilah {{ judul }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/buku.css') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+</head>
+<body>
+
+<!-- ===== Panel pengaturan (tidak ikut tercetak) ===== -->
+<form class="b-panel" method="get" action="{{ url_for('buku') }}">
+  <a class="b-kembali" href="{{ url_for('keluarga_daftar') }}"><i class="bi bi-arrow-left"></i></a>
+  <div class="b-panel-isi">
+    <div class="b-panel-judul"><i class="bi bi-journal-bookmark"></i> Buku Silsilah</div>
+    <label class="b-field"><span>Pangkal silsilah</span>
+      <select name="leluhur" onchange="this.form.submit()">
+        {% for o in pilihan %}<option value="{{ o.id }}" {{ 'selected' if o.id == lid }}>{{ o.judul }} · {{ o.n }} keturunan</option>{% endfor %}
+      </select>
+    </label>
+    <label class="b-field"><span>Tanggal lahir yang masih hidup</span>
+      <select name="lahir" onchange="this.form.submit()">
+        <option value="lengkap" {{ 'selected' if opsi.lahir == 'lengkap' }}>Lengkap (12 Mei 1983)</option>
+        <option value="tahun" {{ 'selected' if opsi.lahir == 'tahun' }}>Tahun saja (1983)</option>
+      </select>
+    </label>
+    <label class="b-cek"><input type="hidden" name="foto" value="0"><input type="checkbox" name="foto" value="1" {{ 'checked' if opsi.foto }} onchange="this.form.submit()"> Foto</label>
+    {% if me.is_admin %}<label class="b-cek" title="Hanya kontak yang boleh ditampilkan pemiliknya"><input type="checkbox" name="kontak" value="1" {{ 'checked' if opsi.kontak }} onchange="this.form.submit()"> Alamat &amp; WA</label>{% endif %}
+  </div>
+  <button type="button" class="b-cetak" onclick="window.print()"><i class="bi bi-file-earmark-pdf"></i> Simpan PDF / Cetak</button>
+  <div class="b-tips"><i class="bi bi-lightbulb"></i> Pada jendela cetak pilih <b>Simpan sebagai PDF</b>, ukuran kertas <b>A5</b>, aktifkan <b>Grafis latar</b>, dan matikan <b>Header &amp; footer</b>.</div>
+</form>
+
+<main class="buku">
+
+<!-- ===== Sampul ===== -->
+<section class="hal sampul"{% if cerita and cerita.sampul %} style="--sampul:url('{{ url_for('foto', name=cerita.sampul) }}')"{% endif %}>
+  <div class="sampul-bingkai">
+    <div class="eyebrow">Buku Silsilah</div>
+    <h1>{{ judul }}</h1>
+    {% if cerita and cerita.tagline %}<p class="tagline">{{ cerita.tagline }}</p>{% endif %}
+    <div class="hiasan">❦</div>
+    <div class="sampul-pasangan">
+      {{ foto(L, 24) }}
+      {% for s in fam.spouses(lid)[:2] %}{{ foto(fam.get(s), 24) }}{% endfor %}
+    </div>
+    <div class="sampul-nama">{{ L.nama }}{% for s in fam.spouses(lid)[:2] %}<br><span class="amp">&amp;</span> {{ fam.get(s).nama }}{% endfor %}</div>
+    {% if cerita and cerita.asal %}<div class="sampul-asal">{{ cerita.asal }}</div>{% endif %}
+    <div class="sampul-kaki">{{ buku.generasi }} generasi · {{ buku.keturunan }} keturunan<br>Disusun {{ BULAN[dicetak.month - 1] }} {{ dicetak.year }}</div>
+  </div>
+</section>
+
+<!-- ===== Halaman keterangan ===== -->
+<section class="hal keterangan">
+  <div class="isi-tengah">
+    <p class="kecil">Buku Silsilah</p>
+    <h2 class="serif">{{ judul }}</h2>
+    <p>Memuat <b>{{ buku.keturunan }}</b> keturunan dari <b>{{ L.nama }}</b> dalam <b>{{ buku.generasi }}</b> generasi,
+      beserta <b>{{ buku.jumlah_pasangan }}</b> pasangan yang menjadi bagian dari keluarga ini.</p>
+    <p class="kecil">Disusun oleh {{ penyusun }} dari aplikasi {{ APP_NAME }}<br>
+      Dicetak {{ dicetak.day }} {{ BULAN[dicetak.month - 1] }} {{ dicetak.year }}</p>
+    <p class="kecil miring">Buku ini berisi data pribadi anggota keluarga dan diperuntukkan bagi kalangan keluarga sendiri.
+      Bila menemukan data yang keliru atau belum tercatat, sampaikan kepada pengelola silsilah agar edisi berikutnya semakin lengkap.</p>
+    <p class="kecil">© Copyright by UCHAHUNT - 2026</p>
+  </div>
+</section>
+
+<!-- ===== Mukadimah ===== -->
+{% if cerita and (cerita.mukadimah or cerita.kutipan or tonggak) %}
+<section class="hal">
+  <h2 class="judul-bagian"><span>Mukadimah</span></h2>
+  {% if cerita.kutipan %}<blockquote class="kutipan">“{{ cerita.kutipan }}”{% if cerita.kutipan_oleh %}<cite>— {{ cerita.kutipan_oleh }}</cite>{% endif %}</blockquote>{% endif %}
+  {% if cerita.mukadimah %}<div class="prosa">{{ cerita.mukadimah|cerita }}</div>{% endif %}
+  {% if tonggak %}
+  <h3 class="sub">Jejak Perjalanan Keluarga</h3>
+  <ol class="linimasa">{% for th, isi in tonggak %}<li><b>{{ th or '•' }}</b><span>{{ isi }}</span></li>{% endfor %}</ol>
+  {% endif %}
+</section>
+{% endif %}
+
+<!-- ===== Cara membaca ===== -->
+<section class="hal">
+  <h2 class="judul-bagian"><span>Cara Membaca Buku Ini</span></h2>
+  <p>Setiap keturunan diberi <b>nomor silsilah</b>. Nomor ini menunjukkan jalur dari leluhur sampai orang tersebut,
+    sehingga siapa pun bisa ditelusuri tanpa perlu membuka gambar pohon yang lebar.</p>
+  <div class="contoh-nomor">
+    <div><span class="no">1</span> {{ nama_pendek(L.nama, 3) }}, sang leluhur</div>
+    <div><span class="no">1.2</span> anak <b>kedua</b> dari leluhur</div>
+    <div><span class="no">1.2.3</span> anak <b>ketiga</b> dari 1.2, berarti cucu leluhur</div>
+  </div>
+  {% if contoh %}<p class="kecil">Contoh dari buku ini: <b>{{ contoh.nomor }}</b> adalah {{ contoh.p.nama }}, {{ generasi_sebutan(contoh.gen)|lower }} dari {{ nama_pendek(L.nama, 3) }}.</p>{% endif %}
+  <p>Jumlah angka pada nomor menunjukkan generasinya: satu angka untuk leluhur, dua angka untuk anak, tiga angka untuk cucu, dan seterusnya.
+    Pada setiap orang tercantum pasangan dan anak-anaknya. Nomor di depan nama anak menunjukkan letak uraian tentang anak itu; buku ini tersusun urut nomor sehingga mudah dicari.</p>
+  <h3 class="sub">Tanda-tanda</h3>
+  <table class="tabel tanda">
+    <tr><td>l.</td><td>lahir</td></tr>
+    <tr><td>†</td><td>telah berpulang (wafat)</td></tr>
+    <tr><td>⚭</td><td>menikah dengan</td></tr>
+    <tr><td><span class="tag cerai">bercerai</span></td><td>pernikahan telah berakhir karena perceraian</td></tr>
+    <tr><td>→ 1.2.3</td><td>orang ini diuraikan lebih lanjut pada nomor tersebut</td></tr>
+  </table>
+  <h3 class="sub">Sebutan generasi</h3>
+  <table class="tabel">
+    <tr><th>Generasi</th><th>Sebutan dari leluhur</th><th>Jumlah</th></tr>
+    {% for g in buku.per_gen %}<tr><td>{{ g.gen + 1 }}</td><td>{{ g.nama }}</td><td>{{ g.jumlah }} orang</td></tr>{% endfor %}
+  </table>
+</section>
+
+<!-- ===== Daftar isi ===== -->
+<section class="hal">
+  <h2 class="judul-bagian"><span>Daftar Isi</span></h2>
+  <ol class="daftar-isi">
+    {% if cerita and (cerita.mukadimah or cerita.kutipan or tonggak) %}<li><span>Mukadimah</span></li>{% endif %}
+    <li><span>Cara Membaca Buku Ini</span></li>
+    <li><span>Bagan Silsilah</span></li>
+    {% for b in buku.bab %}
+    <li class="bab"><span><b>Bab {{ b.romawi }}</b> · {{ b.judul }}</span><em>{{ b.entri[0].nomor }}{% if b.entri|length > 1 %} · {{ b.entri|length }} orang{% endif %}</em></li>
+    {% endfor %}
+    <li><span>Ringkasan Generasi</span></li>
+    {% if buku.kalender %}<li><span>Kalender Ulang Tahun Keluarga</span></li>{% endif %}
+    {% if buku.berpulang %}<li><span>In Memoriam</span></li>{% endif %}
+    <li><span>Indeks Nama</span></li>
+    <li><span>Catatan Keluarga</span></li>
+  </ol>
+</section>
+
+<!-- ===== Bagan ===== -->
+<section class="hal">
+  <h2 class="judul-bagian"><span>Bagan Silsilah</span></h2>
+  <p class="kecil tengah">Garis keturunan secara ringkas. Uraian lengkap setiap orang ada pada bab-bab berikutnya.</p>
+  <div class="bagan">
+    {% for r in buku.bagan %}
+    <div class="bagan-baris" style="--d:{{ r.depth }}">
+      <span class="no">{{ r.nomor }}</span>
+      <span class="nm">{{ r.p.nama }}{% if r.p.wafat %} †{% endif %}</span>
+      {% if r.pasangan %}<span class="ps">⚭ {% for s in r.pasangan %}{{ nama_pendek(s.nama, 3) }}{% if s.wafat %} †{% endif %}{{ ', ' if not loop.last }}{% endfor %}</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ===== Bab-bab ===== -->
+{% for b in buku.bab %}
+<section class="hal bab-buka">
+  <div class="bab-kepala">
+    <div class="bab-no">Bab {{ b.romawi }}</div>
+    <h2>{{ b.judul }}</h2>
+    {% set k = fam.get(b.kepala) %}
+    {% if not loop.first %}<p class="kecil">Keturunan {{ k.nama }}, anak ke-{{ b.entri[0].anak_ke }} dari {{ nama_pendek(L.nama, 3) }}{% if b.entri|length > 1 %} · {{ b.entri|length }} orang{% endif %}</p>
+    {% else %}<p class="kecil">Pangkal silsilah keluarga ini</p>{% endif %}
+    <div class="hiasan">❦</div>
+  </div>
+  {% for e in b.entri %}
+  {% set p = e.p %}
+  {% if e.cerita and e.cerita.mukadimah %}
+  <aside class="cerita-cabang">
+    <div class="kecil">Cerita keluarga</div>
+    <h3 class="serif">{{ e.cerita.judul }}</h3>
+    <div class="prosa">{{ e.cerita.mukadimah|cerita }}</div>
+  </aside>
+  {% endif %}
+  <article class="entri gen-{{ e.gen if e.gen < 6 else 6 }}" id="n{{ e.nomor }}">
+    <div class="entri-kepala">
+      {{ foto(p, 15) }}
+      <div class="entri-id">
+        <div class="entri-no">{{ e.nomor }} <span>{{ generasi_sebutan(e.gen) }}</span></div>
+        <h3>{{ p.nama }}</h3>
+        <div class="entri-tgl">{{ tahun(p) }}</div>
+      </div>
+    </div>
+    <div class="entri-badan">
+      {% if e.ortu %}<p>{{ e.ortu[:1]|upper }}{{ e.ortu[1:] }}{% if e.anak_ke %}, anak ke-{{ e.anak_ke }}{% endif %}.</p>{% endif %}
+      {% set wi = wafat_info(p) %}
+      {% if wi and (wi.usia or p.makam) %}<p class="kecil">{% if wi.usia %}Berpulang pada usia {{ wi.usia }} tahun{% endif %}{% if p.makam %}{{ ', ' if wi.usia }}dimakamkan di {{ p.makam }}{% endif %}.</p>{% endif %}
+      {% if p.pekerjaan or (opsi.kontak and p.tampil_kontak and (p.alamat or p.wa)) %}
+      <p class="kecil">{% if p.pekerjaan %}<i class="bi bi-briefcase"></i> {{ p.pekerjaan }}{% endif %}
+        {% if opsi.kontak and p.tampil_kontak %}{% if p.alamat %}<br><i class="bi bi-geo-alt"></i> {{ p.alamat }}{% endif %}{% if p.wa %}<br><i class="bi bi-whatsapp"></i> {{ p.wa }}{% endif %}{% endif %}</p>
+      {% endif %}
+      {% if p.bio %}<p class="bio">{{ p.bio }}</p>{% endif %}
+      {% for m in e.nikah %}
+      <div class="nikah">
+        {% if m.p %}
+        <div class="nikah-kepala">
+          <span class="lambang">⚭</span>
+          <div>
+            {% if e.jumlah_nikah > 1 %}<span class="ke">{{ {'L': 'Suami', 'P': 'Istri'}.get(m.p.jenis_kelamin, 'Pasangan') }} ke-{{ m.ke }}</span>{% endif %}
+            <b>{{ m.p.nama }}</b>{% if m.nomor %} <span class="ref">→ {{ m.nomor }}</span>{% endif %}
+            <span class="kecil">{{ tahun(m.p) }}</span>
+            {% if m.ortu %}<div class="kecil">{{ m.ortu[:1]|upper }}{{ m.ortu[1:] }}</div>{% endif %}
+            <div class="kecil">{% if m.tanggal %}Menikah {{ m.tanggal|tgl }}{% endif %}
+              {% if m.status == 'cerai' %}<span class="tag cerai">bercerai{% if m.tanggal_selesai %} {{ m.tanggal_selesai|tgl }}{% endif %}</span>{% endif %}</div>
+          </div>
+        </div>
+        {% elif e.nikah|length > 1 %}<div class="nikah-kepala kecil">Anak dengan pasangan yang belum tercatat:</div>{% endif %}
+        {% if m.anak %}
+        <ol class="anak">
+          {% for no, c in m.anak %}<li><span class="no">{{ no }}</span><span class="nm">{{ c.nama }}</span><span class="th">{{ tahun(c) }}</span></li>{% endfor %}
+        </ol>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endfor %}
+
+<!-- ===== Lampiran ===== -->
+<section class="hal">
+  <h2 class="judul-bagian"><span>Ringkasan Generasi</span></h2>
+  <table class="tabel lebar">
+    <tr><th>Gen.</th><th>Sebutan</th><th>Orang</th><th>Masih hidup</th><th>Pasangan</th></tr>
+    {% for g in buku.per_gen %}<tr><td>{{ g.gen + 1 }}</td><td>{{ g.nama }}</td><td>{{ g.jumlah }}</td><td>{{ g.hidup }}</td><td>{{ g.pasangan }}</td></tr>{% endfor %}
+    <tr class="total"><td></td><td>Jumlah</td><td>{{ buku.jumlah }}</td><td>{{ buku.hidup }}</td><td>{{ buku.jumlah_pasangan }}</td></tr>
+  </table>
+</section>
+
+{% if buku.kalender %}
+<section class="hal">
+  <h2 class="judul-bagian"><span>Kalender Ulang Tahun</span></h2>
+  <p class="kecil tengah">Agar tidak ada yang terlewat untuk didoakan dan diberi ucapan.</p>
+  <div class="kalender">
+    {% for bulan, isi in buku.kalender %}
+    <div class="bulan"><h4>{{ bulan }}</h4>
+      {% for r in isi %}<div class="ultah"><b>{{ r.hari }}</b> {{ nama_pendek(r.p.nama, 3) }}{% if r.nomor %} <span class="ref">{{ r.nomor }}</span>{% endif %}</div>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if buku.berpulang %}
+<section class="hal memoriam">
+  <h2 class="judul-bagian"><span>In Memoriam</span></h2>
+  <p class="tengah miring">Mengenang mereka yang telah mendahului kita.<br>Semoga amal ibadahnya diterima dan diberi tempat terbaik di sisi-Nya.</p>
+  <div class="memoriam-daftar">
+    {% for p in buku.berpulang %}{% set wi = wafat_info(p) %}
+    <div class="mem">{{ foto(p, 12) }}<div><b>{{ p.nama }}</b><div class="kecil">{% if wi.rentang %}{{ wi.rentang }}{% endif %}{% if wi.tanggal and wi.tanggal != ('tahun ' ~ p.tahun_wafat) %} · wafat {{ wi.tanggal }}{% endif %}{% if p.makam %} · {{ p.makam }}{% endif %}</div></div><span class="ref">{{ buku.rujukan.get(p.id, '') }}</span></div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="hal">
+  <h2 class="judul-bagian"><span>Indeks Nama</span></h2>
+  <p class="kecil tengah">Angka di kanan adalah nomor silsilah. Pasangan ditandai <i>psg.</i>, lalu nomor suami/istrinya.</p>
+  <div class="indeks">
+    {% for h, isi in buku.indeks.items() %}
+    <div class="indeks-huruf">{{ h }}</div>
+    {% for r in isi %}<div class="indeks-baris"><span>{{ r.p.nama }}</span><i></i><span class="ref">{% if r.pasangan %}psg. {% endif %}{{ r.ref }}</span></div>{% endfor %}
+    {% endfor %}
+  </div>
+</section>
+
+<section class="hal catatan">
+  <h2 class="judul-bagian"><span>Catatan Keluarga</span></h2>
+  <p class="kecil tengah">Tuliskan kelahiran, pernikahan, dan kenangan baru di sini, lalu sampaikan agar dicatat di edisi berikutnya.</p>
+  <div class="garis-tulis">{% for i in range(15) %}<div></div>{% endfor %}</div>
+</section>
+
+<section class="hal penutup">
+  <div class="isi-tengah">
+    <div class="hiasan besar">❦</div>
+    <p class="serif besar miring">“Dari mana kita berasal, ke sanalah kita belajar pulang.”</p>
+    <p class="kecil">{{ judul }} · {{ APP_NAME }}<br>© Copyright by UCHAHUNT - 2026</p>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

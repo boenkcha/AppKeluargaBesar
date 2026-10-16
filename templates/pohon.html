@@ -12,7 +12,7 @@
       <i class="bi bi-{{ 'heart-fill' if m.status == 'menikah' else 'heartbreak' if m.status == 'cerai' else 'flower1' }} ring {{ m.status }}" title="{{ m.status_label }}"></i>
       {% set peran_sp = {'L':'Suami','P':'Istri'}.get(fam.get(m.spouse).jenis_kelamin, 'Pasangan') %}
       {{ tnode(fam.get(m.spouse), fam, focus=p.id, my=me.person_id, cls='ex' if m.status == 'cerai' else '',
-               label=(('Mantan ' ~ peran_sp|lower) if m.status == 'cerai' else (peran_sp ~ ' ke-' ~ m.ke) if node.marriages|length > 1 else None)) }}
+               label=(node.spouse_label or {}).get(m.spouse) or (('Mantan ' ~ peran_sp|lower) if m.status == 'cerai' else (peran_sp ~ ' ke-' ~ m.ke) if node.marriages|length > 1 else None)) }}
     {% endfor %}
   </div>
   {% else %}
@@ -69,16 +69,18 @@
     <div class="tree-judul">
       {{ avatar(p, 48) }}
       <div class="min-w-0 flex-grow-1">
-        <h4 class="mb-0 text-truncate">Pohon {{ 'leluhur' if mode == 'leluhur' else 'keturunan' }} {{ p.nama }}</h4>
-        <div class="small ft-muted d-none d-md-block">{% if mode == 'leluhur' %}Garis ayah & ibu ke atas{% else %}Anak, cucu, dan seterusnya beserta pasangan{% endif %} · klik nama untuk berpindah fokus</div>
+        <h4 class="mb-0 text-truncate">Pohon {{ {'leluhur': 'leluhur', 'keluarga': 'keluarga'}.get(mode, 'keturunan') }} {{ p.nama }}</h4>
+        <div class="small ft-muted d-none d-md-block">{% if mode == 'leluhur' %}Garis ayah & ibu ke atas{% elif mode == 'keluarga' %}Orang tua, saudara, dan anak-anak{% else %}Anak, cucu, dan seterusnya beserta pasangan{% endif %} · klik nama untuk berpindah fokus</div>
       </div>
       <a href="{{ url_for('anggota_detail', pid=p.id) }}" class="btn btn-ghost btn-sm tb-profil" title="Profil"><i class="bi bi-person"></i><span class="d-none d-md-inline"> Profil</span></a>
     </div>
     <div class="tree-actions">
       <div class="seg tb-seg">
+        <a href="{{ url_for('pohon', pid=p.id) }}" class="{{ 'active' if mode == 'keluarga' }}"><i class="bi bi-house-heart"></i> Keluarga</a>
         <a href="{{ url_for('pohon', pid=p.id, mode='leluhur', kedalaman=depth) }}" class="{{ 'active' if mode == 'leluhur' }}"><i class="bi bi-arrow-up"></i> Leluhur</a>
         <a href="{{ url_for('pohon', pid=p.id, mode='keturunan', kedalaman=depth) }}" class="{{ 'active' if mode == 'keturunan' }}"><i class="bi bi-arrow-down"></i> Keturunan</a>
       </div>
+      {% if mode != 'keluarga' %}
       <div class="tb-alat">
         <div class="dropdown tb-item">
           <button class="btn btn-ghost btn-sm w-100" data-bs-toggle="dropdown"><i class="bi bi-layers"></i> {{ depth }}<span class="d-none d-md-inline"> generasi</span><span class="d-md-none"> gen</span></button>
@@ -94,6 +96,7 @@
         <a href="{{ url_for('pohon', pid=top.id, mode='keturunan', kedalaman=depth) }}" class="btn btn-soft btn-sm tb-item" title="Mulai dari leluhur tertinggi"><i class="bi bi-tree"></i> Dari {{ top.nama.split()[0] }}</a>
         {% endif %}
       </div>
+      {% endif %}
     </div>
   </div>
 
@@ -104,12 +107,14 @@
       <button class="btn btn-ghost btn-sm px-2 bg-body" id="zoomIn" title="Perbesar"><i class="bi bi-plus-lg"></i></button>
       <button class="btn btn-ghost btn-sm px-2 bg-body" id="zoomFit" title="Muat layar"><i class="bi bi-arrows-angle-contract"></i></button>
     </div>
-    <div class="tree-canvas" id="treeCanvas">
+    <div class="tree-canvas" id="treeCanvas"{% if mode == 'keluarga' %} data-muat="1"{% endif %}>
       {% if mode == 'leluhur' %}
       <ul class="ftree up">{{ anc(tree) }}</ul>
       {% else %}
       <ul class="ftree">{{ desc(tree) }}</ul>
-      {% if not tree.children and not tree.more %}
+      {% if mode == 'keluarga' and not fam.parents(p.id) %}
+      <p class="text-center ft-muted mt-4 small">Orang tua {{ p.nama.split()[0] }} belum tercatat. <a href="{{ url_for('anggota_detail', pid=p.id) }}">Tambahkan ayah/ibu</a> agar saudara-saudaranya ikut tampil.</p>
+      {% elif mode == 'keturunan' and not tree.children and not tree.more %}
       <p class="text-center ft-muted mt-4 small">Belum ada keturunan yang tercatat. <a href="{{ url_for('anggota_detail', pid=p.id) }}">Tambahkan anak</a> atau lihat <a href="{{ url_for('pohon', pid=p.id, mode='leluhur') }}">leluhurnya</a>.</p>
       {% endif %}
       {% endif %}
