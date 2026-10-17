@@ -1231,3 +1231,4 @@ body.kej-aktif { overflow: hidden; }
   .fokus-seg a .bi { display: none; }
 }
 .ftree { isolation: isolate; }   /* panel zona (z-index:-1) tetap di atas latar bingkai pohon */
+.ftree li.zona { align-self: flex-start; }   /* zona setinggi isinya sendiri (tidak ikut memanjang setinggi zona tetangga) */
