@@ -457,6 +457,17 @@ def user_peran(user=None):
         return "anggota"
 
 
+@app.url_defaults
+def versi_static(endpoint, values):
+    """Tambahkan ?v=<waktu ubah file> pada CSS/JS/ikon agar browser (terutama Safari di HP)
+    langsung mengambil versi terbaru setelah pembaruan, bukan salinan lama dari cache."""
+    if endpoint == "static" and "filename" in values and "v" not in values:
+        try:
+            values["v"] = int(os.stat(os.path.join(app.static_folder, values["filename"])).st_mtime)
+        except OSError:
+            pass
+
+
 @app.template_global()
 def pendiri_pid():
     """Data diri pendiri silsilah (akun pertama yang mendaftar) — mendapat lencana bintang emas."""
