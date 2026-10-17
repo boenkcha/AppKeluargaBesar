@@ -1709,9 +1709,13 @@ def anggota():
     if is_tamu():
         rows = [r for r in rows if r["id"] in tamu_scope()]
     fam = family()
+    lepas = {pid for pid in fam.people if not fam.parents(pid) and not fam.children(pid) and not fam.spouses(pid)}
+    if filt == "lepas":   # belum tersambung ke siapa pun: tanpa orang tua, anak, maupun pasangan
+        rows = [r for r in rows if r["id"] in lepas]
     if urut == "tertua":
         rows = sorted(rows, key=lambda r: fam.age_key(r["id"]))
-    return render_template("anggota.html", rows=rows, q=q, filt=filt, urut=urut, fam=fam, claimed=claimed_ids())
+    return render_template("anggota.html", rows=rows, q=q, filt=filt, urut=urut, fam=fam, claimed=claimed_ids(),
+                           n_lepas=len(lepas), lepas=lepas)
 
 
 @app.route("/anggota/tambah", methods=["GET", "POST"])
@@ -1735,6 +1739,13 @@ def anggota_tambah():
                     flash(f"{target['nama']} kini tercatat sebagai {peran} dari {anak['nama']} 🌿", "success")
                     return redirect(url_for("anggota_detail", pid=anak["id"]))
             else:
+                # "Tambahkan anak" dari profil orang tua, lalu ternyata anaknya sudah tercatat: hubungkan
+                ortu = {k: _int(request.form.get(f"{k}_id")) for k in ("ayah", "ibu")}
+                ortu = {k: v for k, v in ortu.items() if v in family().people and v != pakai}
+                if ortu:
+                    for teks, kat in tautkan_ortu(_person(pakai), ortu):
+                        flash(teks, kat)
+                    return redirect(url_for("anggota_detail", pid=next(iter(ortu.values()))))
                 return redirect(url_for("anggota_detail", pid=pakai))
         pid, errors, saran = save_person(self_exclude=set(), link_child=(anak["id"], peran) if anak and peran in ("ayah", "ibu") else None)
         for e in errors:
@@ -1807,7 +1818,7 @@ def anggota_detail(pid):
     return render_template("person.html", p=p, fam=fam, akun=akun, editor=editor, rel=rel, cerita=cerita, tautan=tautan,
                            akun_orang=akun_orang, akses_baru=akses_baru,
                            pintu=pintu, kenangan=kenangan, tabur=tabur, ucapan=ucapan, ui=ui, STIKER=STIKER, rayak=rayak,
-                           tebakan=parent_guesses(fam, pid), riwayat=riwayat, usulan=usulan, kembar=kembar,
+                           tebakan=parent_guesses(fam, pid), tebakan_anak=child_guesses(fam, pid) if can_edit(p) else [], riwayat=riwayat, usulan=usulan, kembar=kembar,
                            loads=json.loads)
 
 
@@ -1886,6 +1897,93 @@ def usulan_aksi(uid, aksi):
         abort(404)
     db.commit()
     return redirect(url_for("anggota_detail", pid=person["id"]))
+
+
+def tautkan_ortu(child, ortu):
+    """Hubungkan data yang SUDAH ADA sebagai orang tua seseorang. `ortu` = {'ayah': id, 'ibu': id}.
+    Tidak pernah menimpa orang tua lain yang sudah tercatat. Mengembalikan daftar pesan (teks, kategori)."""
+    fam, db, pesan, ubah = family(), get_db(), [], False
+    nm = panggilan(child["nama"])
+    for peran, oid in ortu.items():
+        o = fam.people.get(oid)
+        if not o:
+            continue
+        if oid == child["id"] or oid in fam.descendants(child["id"]):
+            pesan.append((f"{o['nama']} tidak bisa menjadi {peran} {nm}: silsilahnya jadi melingkar.", "warning"))
+        elif fam.gender(oid) and fam.gender(oid) != ("L" if peran == "ayah" else "P"):
+            pesan.append((f"{o['nama']} tercatat sebagai {'perempuan' if peran == 'ayah' else 'laki-laki'}, jadi tidak bisa menjadi {peran}.", "warning"))
+        elif child[f"{peran}_id"] == oid:
+            pesan.append((f"{o['nama']} memang sudah tercatat sebagai {peran} {nm}.", "info"))
+        elif child[f"{peran}_id"]:
+            lama = fam.people.get(child[f"{peran}_id"])
+            pesan.append((f"{nm} sudah tercatat punya {peran}: {lama['nama'] if lama else '-'}. "
+                          f"Bila itu keliru, ganti lewat tombol Ubah di halaman {nm}.", "warning"))
+        elif not can_edit(child):
+            pesan.append((f"Anda belum berhak mengubah data {nm}; minta pengelolanya atau admin untuk menghubungkan.", "warning"))
+        else:
+            db.execute(f"UPDATE persons SET {peran}_id=? WHERE id=?", (oid, child["id"]))
+            log_riwayat(db, child["id"], [f"{peran.capitalize()}: — → {o['nama']}"], "Dihubungkan ke data yang sudah ada")
+            pesan.append((f"{o['nama']} kini tercatat sebagai {peran} {nm} 🌿", "success"))
+            ubah = True
+    if ubah:
+        db.commit()
+        g.pop("family", None)
+    return pesan
+
+
+def child_guesses(fam, pid, limit=3):
+    """Tebakan anak yang sudah tercatat tetapi belum tersambung ke orang ini:
+    - kuat: ibu/ayahnya sudah tercatat sebagai pasangan orang ini, sedangkan slot orang ini kosong;
+    - sedang: nama keluarga sama & usia masuk akal, belum punya orang tua di slot ini."""
+    p = fam.people[pid]
+    jk = fam.gender(pid)
+    if jk not in ("L", "P"):
+        return []
+    slot, lain = ("ayah_id", "ibu_id") if jk == "L" else ("ibu_id", "ayah_id")
+    pasangan = set(fam.spouses(pid))
+    tak_boleh = {pid} | pasangan | set(fam._up(pid)[0]) | fam.descendants(pid)
+    tok_p = set(matching.tokens(p["nama"])) - matching.DEPAN_UMUM
+    out = []
+    for cid, c in fam.people.items():
+        if cid in tak_boleh or c[slot]:
+            continue
+        if p["tahun_lahir"] and c["tahun_lahir"] and not 14 <= c["tahun_lahir"] - p["tahun_lahir"] <= 60:
+            continue
+        if c[lain] in pasangan:
+            out.append((0, cid, f"{'Ibu' if jk == 'L' else 'Ayah'}nya {panggilan(fam.people[c[lain]]['nama'])}, pasangan {panggilan(p['nama'])}"))
+            continue
+        bersama = tok_p & set(matching.tokens(c["nama"]))
+        if bersama and not c[lain] and len(matching.tokens(c["nama"])) > 1:
+            out.append((1, cid, f"Nama keluarga sama: {', '.join(sorted(bersama)).title()}"))
+    out.sort(key=lambda t: (t[0], fam._birth_key(t[1])))
+    return [{"id": cid, "alasan": alasan, "kuat": kuat == 0} for kuat, cid, alasan in out[:limit]]
+
+
+@app.route("/anggota/<int:pid>/hubungkan", methods=["POST"])
+@login_required
+def anggota_hubungkan(pid):
+    """Hubungkan data yang sudah ada: sebagai ayah/ibu orang ini, atau sebagai anaknya."""
+    p, fam = _person(pid), family()
+    peran, tid = request.form.get("peran"), _int(request.form.get("target_id"))
+    if not p or peran not in ("ayah", "ibu", "anak") or tid not in fam.people or tid == pid:
+        flash("Pilih dulu nama yang sudah tercatat dari daftar.", "warning")
+        return redirect(url_for("anggota_detail", pid=pid))
+    if peran in ("ayah", "ibu"):
+        pesan = tautkan_ortu(p, {peran: tid})
+    else:
+        jk = fam.gender(pid)
+        if jk not in ("L", "P"):
+            flash("Isi dulu jenis kelamin di data ini agar sistem tahu sebagai ayah atau ibu.", "warning")
+            return redirect(url_for("anggota_detail", pid=pid))
+        ortu = {("ayah" if jk == "L" else "ibu"): pid}
+        sp = _int(request.form.get("dengan_pasangan"))
+        lain = "ibu" if jk == "L" else "ayah"
+        if sp in fam.spouses(pid) and not fam.people[tid][f"{lain}_id"]:
+            ortu[lain] = sp
+        pesan = tautkan_ortu(_person(tid), ortu)
+    for teks, kat in pesan:
+        flash(teks, kat)
+    return redirect(url_for("anggota_detail", pid=pid))
 
 
 def parent_guesses(fam, pid):

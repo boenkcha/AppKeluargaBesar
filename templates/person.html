@@ -2,6 +2,22 @@
 {% from "_macros.html" import avatar, nama, picker, karangan, kelopak, bendera, topi_pesta with context %}
 {% from "_ultah.html" import modal_ucapan with context %}
 {% from "_akses.html" import panel_akses with context %}
+
+{# Hubungkan data yang SUDAH tercatat (bukan membuat orang baru) #}
+{% macro hubungkan(role, jk, sp1=None) -%}
+<details class="hubung mb-1">
+  <summary><i class="bi bi-link-45deg"></i> {{ 'Anaknya sudah tercatat? Pilih di sini' if role == 'anak' else role|capitalize ~ 'nya sudah tercatat? Pilih di sini' }}</summary>
+  <form method="post" action="{{ url_for('anggota_hubungkan', pid=p.id) }}" class="hubung-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="peran" value="{{ role }}">
+    {{ picker('hub_' ~ role, None, jk=jk, id_name='target_id', fam=fam, allow_new=false, exclude=p.id, placeholder='Ketik nama yang sudah ada…') }}
+    {% if role == 'anak' and sp1 %}<label class="form-check small mt-2"><input class="form-check-input" type="checkbox" name="dengan_pasangan" value="{{ sp1 }}" checked>
+      <span class="form-check-label">{{ panggilan(fam.get(sp1).nama) }} juga sebagai {{ 'ibu' if p.jenis_kelamin == 'L' else 'ayah' }}nya</span></label>{% endif %}
+    <button class="btn btn-primary btn-sm mt-2"><i class="bi bi-link-45deg me-1"></i>Hubungkan</button>
+    <div class="form-hint mt-1">Tidak membuat data baru — hanya menyambungkan data yang sudah ada.</div>
+  </form>
+</details>
+{%- endmacro %}
+
 {% block title %}{{ p.nama }}{% endblock %}
 {% block content %}
 {% set pct, missing = completeness(p) %}
@@ -202,6 +218,7 @@
               </form>
               {% endfor %}
               <a href="{{ url_for('anggota_tambah', anak=p.id, peran=role) }}" class="rel-empty mb-1"><i class="bi bi-plus-circle"></i> {{ 'Bukan, tambahkan ' ~ role ~ ' lain' if tebakan.get(role) else 'Tambahkan ' ~ role }}</a>
+              {{ hubungkan(role, jk) }}
               {% else %}
               <div class="rel-empty mb-1"><i class="bi bi-question-circle"></i> Data {{ role }} belum ada</div>
               {% endif %}
@@ -293,7 +310,18 @@
             {% if p.jenis_kelamin %}
             {% set aktif = fam.active_spouses(p.id) %}{% set semua = fam.spouses(p.id) %}
             {% set sp1 = aktif[0] if aktif|length == 1 else (semua[0] if semua|length == 1 else None) %}
+            {% for t in tebakan_anak %}{% set tc = fam.get(t.id) %}
+            <form method="post" action="{{ url_for('anggota_hubungkan', pid=p.id) }}" class="guess mb-1 mt-1">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="peran" value="anak">
+              <input type="hidden" name="target_id" value="{{ t.id }}">{% if sp1 %}<input type="hidden" name="dengan_pasangan" value="{{ sp1 }}">{% endif %}
+              {{ avatar(tc, 40) }}
+              <div class="flex-grow-1 min-w-0"><div class="r">Mungkin anaknya?</div><div class="fw-semibold text-truncate">{{ tc.nama }}</div>
+                <div class="r">{{ t.alasan }}{% if lahir(tc) %} · {{ lahir(tc) }}{% endif %}</div></div>
+              <button class="btn btn-{{ 'primary' if t.kuat else 'soft' }} btn-sm text-nowrap"><i class="bi bi-link-45deg"></i> Hubungkan</button>
+            </form>
+            {% endfor %}
             <a href="{{ url_for('anggota_tambah', **{('ayah' if p.jenis_kelamin == 'L' else 'ibu'): p.id}) }}{% if sp1 %}&{{ 'ibu' if p.jenis_kelamin == 'L' else 'ayah' }}={{ sp1 }}{% endif %}" class="rel-empty mt-1" data-tambah-anak><i class="bi bi-plus-circle"></i> Tambahkan anak{% if sp1 %} <span class="ft-muted">dengan {{ panggilan(fam.get(sp1).nama) }}</span>{% endif %}</a>
+            {% if can_edit(p) %}{{ hubungkan('anak', '', sp1) }}{% endif %}
             {% endif %}
           </div>
         </div>

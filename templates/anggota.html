@@ -21,6 +21,7 @@
       {% for key, label in [('', 'Semua'), ('akun', 'Terverifikasi'), ('foto', 'Berfoto'), ('wafat', 'Mengenang')] %}
       <a href="{{ url_for('anggota', q=q or None, f=key or None, urut=urut if urut == 'tertua' else None) }}" class="{{ 'active' if filt == key }}">{{ label }}</a>
       {% endfor %}
+      {% if n_lepas or filt == 'lepas' %}<a href="{{ url_for('anggota', q=q or None, f='lepas', urut=urut if urut == 'tertua' else None) }}" class="{{ 'active' if filt == 'lepas' }}"><i class="bi bi-link-45deg"></i> Belum terhubung <span class="badge rounded-pill text-bg-warning">{{ n_lepas }}</span></a>{% endif %}
     </div>
     <div class="seg">
       <a href="{{ url_for('anggota', q=q or None, f=filt or None) }}" class="{{ 'active' if urut == 'nama' }}"><i class="bi bi-sort-alpha-down"></i> Nama</a>
@@ -28,6 +29,11 @@
     </div>
   </form>
 
+  {% if filt == 'lepas' %}
+  <div class="lepas-info mb-3 fade-up"><i class="bi bi-lightbulb"></i>
+    <div>Nama-nama ini belum tersambung ke orang tua, anak, maupun pasangan. Buka profilnya, lalu di bagian <b>Orang tua</b> atau <b>Anak</b> pilih
+      <b>“…sudah tercatat? Pilih di sini”</b> untuk menyambungkan ke data yang sudah ada — tanpa membuat data baru.</div></div>
+  {% endif %}
   {% if rows %}
   <div class="row g-3">
     {% for p in rows %}
@@ -38,6 +44,7 @@
         <div class="min-w-0">
           <div class="nm" title="{{ p.nama }}">{% if pekan_ultah(p) %}<span title="Pekan ulang tahun">🎂</span> {% endif %}{{ nama(p) }}{% if p.id == pendiri_pid() %}&nbsp;<i class="bi bi-star-fill bintang-emas small" title="Pendiri silsilah · terverifikasi"></i>{% elif p.id in claimed %}&nbsp;<i class="bi bi-patch-check-fill small" style="color:var(--ft-primary)" title="Terverifikasi"></i>{% endif %}</div>
           <div class="sub">{{ p.pekerjaan or (lahir(p) and 'Lahir ' ~ lahir(p)) or '—' }}</div>
+          {% if p.id in lepas %}<span class="chip chip-accent mt-1" style="font-size:.68rem"><i class="bi bi-link-45deg"></i> Belum terhubung</span>{% endif %}
           {% if ortu %}<div class="sub"><i class="bi bi-diagram-2"></i> {{ 'Putra' if p.jenis_kelamin == 'L' else 'Putri' if p.jenis_kelamin == 'P' else 'Anak' }} {% for x in ortu %}{{ fam.people[x].nama.split()[0] }}{{ ' & ' if not loop.last }}{% endfor %}</div>{% endif %}
         </div>
       </a>

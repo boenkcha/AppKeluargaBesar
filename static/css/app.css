@@ -1232,3 +1232,12 @@ body.kej-aktif { overflow: hidden; }
 }
 .ftree { isolation: isolate; }   /* panel zona (z-index:-1) tetap di atas latar bingkai pohon */
 .ftree li.zona { align-self: flex-start; }   /* zona setinggi isinya sendiri (tidak ikut memanjang setinggi zona tetangga) */
+
+/* Hubungkan data yang sudah tercatat */
+details.hubung > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .45rem; padding: .55rem .8rem;
+  border-radius: 14px; font-size: .84rem; font-weight: 600; color: var(--ft-primary); background: var(--ft-primary-soft); }
+details.hubung > summary::-webkit-details-marker { display: none; }
+details.hubung[open] > summary { border-radius: 14px 14px 0 0; }
+.hubung-form { padding: .75rem .8rem .8rem; border: 1px solid var(--ft-primary-soft); border-top: 0; border-radius: 0 0 14px 14px; background: var(--ft-surface); }
+.lepas-info { display: flex; gap: .7rem; align-items: flex-start; padding: .9rem 1rem; border-radius: 16px; background: var(--ft-lemon-soft); font-size: .9rem; }
+.lepas-info > .bi { color: #c79a1c; font-size: 1.2rem; }
