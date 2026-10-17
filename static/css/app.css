@@ -1190,3 +1190,44 @@ body.kej-aktif { overflow: hidden; }
 .chip.chip-emas { background: linear-gradient(135deg, #fff8dc, #fbe7a6); color: #7a5410; border: 1px solid #efd68a; box-shadow: 0 4px 12px -6px rgba(201,146,31,.6); }
 .chip.chip-emas i { background: linear-gradient(160deg, #fff3b0, #f3c94d 45%, #c9921f); -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 1px 1px rgba(150,100,10,.5)); }
+
+/* ===== Zona garis di pohon: garis ayah / garis ibu (leluhur) & cabang per anak (keturunan) ===== */
+.ftree li.zona { --zc: var(--ft-primary-2); --zbg: rgba(238, 234, 255, .5); --zt: var(--ft-primary); --ft-line: var(--zc); }
+.ftree li.garis-ayah { --zc: #93bfea; --zbg: rgba(228, 240, 252, .62); --zt: #3d7cbd; }
+.ftree li.garis-ibu  { --zc: #eea6bf; --zbg: rgba(253, 231, 239, .62); --zt: #c0507a; }
+.ftree li.cabang-0 { --zc: #b9acf3; --zbg: rgba(238, 234, 255, .55); --zt: #6f5fd0; }
+.ftree li.cabang-1 { --zc: #f2b391; --zbg: rgba(255, 236, 226, .6);  --zt: #c46a3e; }
+.ftree li.cabang-2 { --zc: #93d3b7; --zbg: rgba(226, 246, 236, .62); --zt: #2f8b67; }
+.ftree li.cabang-3 { --zc: #9cc6ee; --zbg: rgba(228, 240, 252, .62); --zt: #3d7cbd; }
+.ftree li.cabang-4 { --zc: #f0a8c1; --zbg: rgba(253, 231, 239, .6);  --zt: #c0507a; }
+.ftree li.cabang-5 { --zc: #e2c56a; --zbg: rgba(255, 246, 214, .7);  --zt: #a17d16; }
+.zona-panel { position: absolute; z-index: -1; left: 3px; right: 3px; top: 14px; bottom: 0; border-radius: 26px;
+  background: var(--zbg); border: 1.5px solid color-mix(in srgb, var(--zc) 55%, transparent); pointer-events: none; }
+.zona-label { position: absolute; left: 50%; z-index: 2; max-width: calc(100% - 16px); padding: 3px 12px; border-radius: 999px;
+  border: 1.5px solid var(--zc); background: var(--ft-surface); color: var(--zt); font: 700 .74rem var(--bs-body-font-family);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; box-shadow: 0 4px 12px -8px rgba(60, 50, 90, .5); transition: .2s; }
+.zona-label b { display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; margin-right: 3px; border-radius: 50%; background: var(--zc); color: #fff; font-size: .68rem; }
+.zona-label:hover { background: var(--zbg); }
+/* leluhur (pohon dibalik): label di puncak zona, yaitu bagian bawah elemen */
+.ftree.up li.zona { padding-bottom: 46px; padding-left: 16px; padding-right: 16px; }
+.ftree.up .zona-label { bottom: 12px; transform: translateX(-50%) scaleY(-1); }
+.ftree.up li.subzona { padding-bottom: 22px; }
+.ftree.up li.subzona + li.subzona { border-left: 1.5px dashed var(--zc); }
+.sub-label { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%) scaleY(-1); font-size: .64rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--zt); opacity: .75; white-space: nowrap; }
+/* keturunan: label tergantung di garis penghubung, di atas anak pertama cabang */
+.ftree:not(.up) li.cabang { padding-top: 62px; padding-left: 14px; padding-right: 14px; padding-bottom: 14px; }
+.ftree:not(.up) li.cabang::before, .ftree:not(.up) li.cabang::after { height: 62px; }
+.ftree:not(.up) .zona-label { top: 22px; transform: translateX(-50%); }
+/* fokus satu garis/cabang */
+.tree-canvas .zona { transition: opacity .3s, filter .3s; }
+.tree-canvas[data-fokus] .zona:not(.aktif) { opacity: .2; filter: saturate(.25); }
+.tree-canvas[data-fokus] .zona:not(.aktif) .zona-label { opacity: 1; }
+.fokus-seg { padding: 3px; background: var(--ft-surface); border: 1px solid var(--ft-border); }
+.fokus-seg a { padding: .25rem .65rem; font-size: .78rem; }
+.fokus-seg a.active { background: var(--ft-primary-soft); color: var(--ft-primary); box-shadow: none; }
+@media (max-width: 767px) {
+  .fokus-seg a { padding: .25rem .5rem; font-size: .72rem; }
+  .fokus-seg a .bi { display: none; }
+}
+.ftree { isolation: isolate; }   /* panel zona (z-index:-1) tetap di atas latar bingkai pohon */

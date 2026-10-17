@@ -706,6 +706,31 @@
     window.addEventListener("orientationchange", () => setTimeout(pasLayar, 300));
     window.visualViewport?.addEventListener("resize", pasLayar);
     pinch(vp, () => zoom, setZoom);
+    // Fokus satu garis (ayah/ibu) atau satu cabang: sisanya diredupkan, zona dipilih dimuatkan ke layar
+    function fokus(key) {
+      if (!key || canvas.dataset.fokus === key) {
+        delete canvas.dataset.fokus;
+        $$(".zona.aktif", canvas).forEach((z) => z.classList.remove("aktif"));
+        $$(".fokus-seg a").forEach((a) => a.classList.toggle("active", !a.dataset.fokus));
+        $("#zoomFit").onclick();
+        return;
+      }
+      const zona = $(`.zona[data-zona="${key}"]`, canvas);
+      if (!zona) return;
+      canvas.dataset.fokus = key;
+      $$(".zona", canvas).forEach((z) => z.classList.toggle("aktif", z === zona));
+      $$(".fokus-seg a").forEach((a) => a.classList.toggle("active", a.dataset.fokus === key));
+      setZoom(1);
+      const { width: w, height: h } = zona.getBoundingClientRect();
+      // muat selebar layar; tinggi ikut dimuatkan selama tulisan masih terbaca (≥55%)
+      // (di HP yang sempit: jangan lebih kecil dari 50% — sisanya cukup digeser)
+      setZoom(Math.min(1, Math.max(0.5, (vp.clientWidth - 24) / w), Math.max(0.55, (vp.clientHeight - 60) / h)));
+      const r = zona.getBoundingClientRect(), v = vp.getBoundingClientRect();
+      vp.scrollLeft += r.left - v.left - (v.width - r.width) / 2;
+      vp.scrollTop += r.top - v.top - 52;   // sisakan ruang untuk bilah zoom di atas
+    }
+    $$(".fokus-seg a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); fokus(a.dataset.fokus); }));
+    $$(".zona-label", canvas).forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); fokus(b.dataset.fokus); }));
     function centerFocus() {
       const f = $(".tnode.focus", canvas);
       if (!f) return;

@@ -2,9 +2,11 @@
 {% from "_macros.html" import avatar, tnode with context %}
 {% block title %}Pohon {{ p.nama }}{% endblock %}
 
-{% macro desc(node) -%}
+{% macro desc(node, cabang=None) -%}
 {%- set person = fam.get(node.id) -%}
-<li>
+<li{% if cabang %} class="zona cabang cabang-{{ (cabang - 1) % 6 }}" data-zona="c{{ cabang }}"{% endif %}>
+  {% if cabang %}<span class="zona-panel" aria-hidden="true"></span>
+  <button type="button" class="zona-label" data-fokus="c{{ cabang }}" title="Fokus ke cabang {{ person.nama }}"><b>{{ cabang }}</b> Cabang {{ nama_pendek(person.nama) }}</button>{% endif %}
   {% if node.spouses %}
   <div class="couple">
     {{ tnode(person, fam, focus=p.id, my=me.person_id, label=node.label) }}
@@ -20,13 +22,17 @@
   {% endif %}
   {% if node.more %}<a href="{{ url_for('pohon', pid=node.id, mode='keturunan') }}" class="chip chip-primary more-pill">+{{ node.more }} anak lagi</a>{% endif %}
   {% if node.children %}
-  <ul>{% for c in node.children %}{{ desc(c) }}{% endfor %}</ul>
+  <ul>{% for c in node.children %}{{ desc(c, cabang=loop.index if node.id == tree.id and mode == 'keturunan' and node.children|length > 1 else None) }}{% endfor %}</ul>
   {% endif %}
 </li>
 {%- endmacro %}
 
-{% macro anc(node) -%}
-<li>
+{% macro anc(node, zona=None, sub=None, lvl=0) -%}
+{%- set zn = fam.get(node.id) if node.id else None -%}
+<li class="{{ 'zona garis-' ~ zona if zona }}{{ ' subzona' if sub }}"{% if zona %} data-zona="{{ zona }}"{% endif %}>
+  {% if zona %}<span class="zona-panel" aria-hidden="true"></span>
+  <button type="button" class="zona-label" data-fokus="{{ zona }}" title="Fokus ke garis {{ zona }}"><i class="bi bi-gender-{{ 'male' if zona == 'ayah' else 'female' }}"></i> Garis {{ zona|capitalize }}{% if zn %} · {{ nama_pendek(zn.nama) }}{% endif %}</button>{% endif %}
+  {% if sub %}<span class="sub-label">garis {{ sub }}</span>{% endif %}
   {% if node.id %}
     {% if node.grouped %}
     <div class="sibgroup {{ 'solo' if node.group|length == 1 }}">
@@ -52,7 +58,8 @@
     {{ tnode(fam.get(node.id), fam, focus=p.id, my=me.person_id, badge=node.badge) }}
     {% endif %}
     {% if node.more %}<a href="{{ url_for('pohon', pid=node.id, mode='leluhur') }}" class="chip chip-accent more-pill" style="transform:scaleY(-1)">lanjut ke atas</a>{% endif %}
-    {% if node.parents %}<ul>{% for par in node.parents %}{{ anc(par) }}{% endfor %}</ul>{% endif %}
+    {% if node.parents %}<ul>{% for par in node.parents %}{{ anc(par, zona=('ayah', 'ibu')[loop.index0] if lvl == 0 else None,
+                                                                  sub=(('kakek', 'nenek')[loop.index0] if lvl == 1 else None), lvl=lvl + 1) }}{% endfor %}</ul>{% endif %}
   {% else %}
     {% if can_edit(fam.get(node.child)) %}
     <a href="{{ url_for('anggota_tambah', anak=node.child, peran=node.role) }}" class="tnode empty"><i class="bi bi-plus-circle fs-4"></i><span class="nm">Tambah {{ node.role }}</span><span class="yr">Belum diketahui</span></a>
@@ -106,6 +113,13 @@
       <span class="btn btn-ghost btn-sm bg-body disabled" id="zoomLbl" style="min-width:64px">100%</span>
       <button class="btn btn-ghost btn-sm px-2 bg-body" id="zoomIn" title="Perbesar"><i class="bi bi-plus-lg"></i></button>
       <button class="btn btn-ghost btn-sm px-2 bg-body" id="zoomFit" title="Muat layar"><i class="bi bi-arrows-angle-contract"></i></button>
+      {% if mode == 'leluhur' %}
+      <div class="seg fokus-seg ms-1" role="group" aria-label="Fokus garis">
+        <a href="#" data-fokus="" class="active">Semua</a>
+        <a href="#" data-fokus="ayah"><i class="bi bi-gender-male"></i> Ayah</a>
+        <a href="#" data-fokus="ibu"><i class="bi bi-gender-female"></i> Ibu</a>
+      </div>
+      {% endif %}
     </div>
     <div class="tree-canvas" id="treeCanvas"{% if mode == 'keluarga' %} data-muat="1"{% endif %}>
       {% if mode == 'leluhur' %}
